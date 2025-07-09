@@ -1,0 +1,262 @@
+#include "modo_board.cc"
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+
+#define TAG "ModoBoardTest"
+
+// 测试任务
+void TestModoBoard() {
+    ESP_LOGI(TAG, "Starting MODO Board test...");
+    
+    // 获取板级实例
+    auto& board = Board::GetInstance();
+    
+    // 测试音频编解码器
+    auto codec = board.GetAudioCodec();
+    if (codec) {
+        ESP_LOGI(TAG, "Audio codec initialized successfully");
+        codec->SetOutputVolume(50);
+        ESP_LOGI(TAG, "Volume set to 50%%");
+    } else {
+        ESP_LOGE(TAG, "Failed to initialize audio codec");
+    }
+    
+    // 测试LED
+    auto led = board.GetLed();
+    if (led) {
+        ESP_LOGI(TAG, "LED initialized successfully");
+        led->On();
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        led->Off();
+    } else {
+        ESP_LOGE(TAG, "Failed to initialize LED");
+    }
+    
+    // 测试显示（应该是NoDisplay）
+    auto display = board.GetDisplay();
+    if (display) {
+        ESP_LOGI(TAG, "Display initialized successfully");
+        display->SetStatus("Test Status");
+        display->SetChatMessage("user", "Test message");
+    } else {
+        ESP_LOGE(TAG, "Failed to initialize display");
+    }
+    
+    ESP_LOGI(TAG, "MODO Board test completed");
+}
+
+// 测试WS2812 LED
+void TestWS2812() {
+    ESP_LOGI(TAG, "Testing WS2812 LED...");
+    
+    // 创建WS2812实例
+    Ws2812Led led(WS2812_GPIO, WS2812_LED_COUNT);
+    
+    // 测试基本颜色
+    led.SetAllPixels(255, 0, 0); // 红色
+    led.Show();
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    
+    led.SetAllPixels(0, 255, 0); // 绿色
+    led.Show();
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    
+    led.SetAllPixels(0, 0, 255); // 蓝色
+    led.Show();
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    
+    // 测试彩虹效果
+    for (int i = 0; i < 10; i++) {
+        led.Rainbow(0, WS2812_LED_COUNT, 100);
+    }
+    
+    // 测试呼吸效果
+    for (int i = 0; i < 5; i++) {
+        led.Breathing(255, 0, 255, 50); // 紫色呼吸
+    }
+    
+    // 测试电量显示
+    led.ShowBatteryLevel(80);
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    
+    led.ShowBatteryLevel(30);
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    
+    led.ShowBatteryLevel(10);
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    
+    // 清除LED
+    led.Clear();
+    led.Show();
+    
+    ESP_LOGI(TAG, "WS2812 LED test completed");
+}
+
+// 测试RC522 NFC
+void TestRC522() {
+    ESP_LOGI(TAG, "Testing RC522 NFC...");
+    
+    // 创建RC522实例
+    Rc522 rc522(RC522_SPI_HOST, RC522_GPIO_MISO, RC522_GPIO_MOSI, 
+                RC522_GPIO_SCLK, RC522_GPIO_CS, RC522_GPIO_RST);
+    
+    if (rc522.Init()) {
+        ESP_LOGI(TAG, "RC522 initialized successfully");
+        
+        // 设置回调
+        rc522.SetCardDetectedCallback([](const std::string& uid) {
+            ESP_LOGI(TAG, "Card detected: %s", uid.c_str());
+        });
+        
+        rc522.SetCardRemovedCallback([]() {
+            ESP_LOGI(TAG, "Card removed");
+        });
+        
+        // 开始检测
+        rc522.StartCardDetection();
+        
+        // 运行检测30秒
+        for (int i = 0; i < 30; i++) {
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            ESP_LOGI(TAG, "NFC detection running... %d/30", i + 1);
+        }
+        
+        rc522.StopCardDetection();
+    } else {
+        ESP_LOGE(TAG, "Failed to initialize RC522");
+    }
+    
+    ESP_LOGI(TAG, "RC522 NFC test completed");
+}
+
+// 测试AXP2101电源管理
+void TestAXP2101() {
+    ESP_LOGI(TAG, "Testing AXP2101 power management...");
+    
+    // 创建I2C总线
+    i2c_master_bus_handle_t i2c_bus;
+    i2c_master_bus_config_t bus_config = {
+        .i2c_port = AXP2101_I2C_PORT,
+        .sda_io_num = AXP2101_GPIO_SDA,
+        .scl_io_num = AXP2101_GPIO_SCL,
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt = 7,
+        .intr_priority = 0,
+        .trans_queue_depth = 0,
+        .flags = {
+            .enable_internal_pullup = 1,
+        },
+    };
+    
+    if (i2c_new_master_bus(&bus_config, &i2c_bus) == ESP_OK) {
+        // 创建AXP2101实例
+        Axp2101 axp2101(i2c_bus, AXP2101_I2C_ADDR);
+        
+        // 设置回调
+        axp2101.SetLowBatteryCallback([](int level) {
+            ESP_LOGW(TAG, "Low battery warning: %d%%", level);
+        });
+        
+        axp2101.SetChargingStateCallback([](bool charging) {
+            ESP_LOGI(TAG, "Charging state: %s", charging ? "Charging" : "Not charging");
+        });
+        
+        // 开始监控
+        axp2101.StartMonitoring();
+        
+        // 读取基本信息
+        ESP_LOGI(TAG, "Battery level: %d%%", axp2101.GetBatteryLevel());
+        ESP_LOGI(TAG, "Battery voltage: %.2f mV", axp2101.GetBatteryVoltage());
+        ESP_LOGI(TAG, "Battery current: %.2f mA", axp2101.GetBatteryCurrent());
+        ESP_LOGI(TAG, "Battery power: %.2f mW", axp2101.GetBatteryPower());
+        ESP_LOGI(TAG, "Battery temperature: %d°C", axp2101.GetBatteryTemperature());
+        ESP_LOGI(TAG, "Is charging: %s", axp2101.IsCharging() ? "Yes" : "No");
+        ESP_LOGI(TAG, "Is discharging: %s", axp2101.IsDischarging() ? "Yes" : "No");
+        ESP_LOGI(TAG, "Is battery connected: %s", axp2101.IsBatteryConnected() ? "Yes" : "No");
+        ESP_LOGI(TAG, "Is power connected: %s", axp2101.IsPowerConnected() ? "Yes" : "No");
+        
+        // 运行监控30秒
+        for (int i = 0; i < 30; i++) {
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            ESP_LOGI(TAG, "Power monitoring running... %d/30", i + 1);
+        }
+        
+        axp2101.StopMonitoring();
+        i2c_del_master_bus(i2c_bus);
+    } else {
+        ESP_LOGE(TAG, "Failed to initialize I2C bus for AXP2101");
+    }
+    
+    ESP_LOGI(TAG, "AXP2101 power management test completed");
+}
+
+// 测试Rainmaker配网
+void TestRainmakerProvisioning() {
+    ESP_LOGI(TAG, "Testing Rainmaker provisioning...");
+    
+    RainmakerProvisioning prov;
+    
+    if (prov.Init()) {
+        ESP_LOGI(TAG, "Rainmaker provisioning initialized");
+        
+        // 设置回调
+        prov.SetProvisioningSuccessCallback([]() {
+            ESP_LOGI(TAG, "Provisioning successful");
+        });
+        
+        prov.SetProvisioningFailureCallback([](const std::string& error) {
+            ESP_LOGE(TAG, "Provisioning failed: %s", error.c_str());
+        });
+        
+        // 检查配网状态
+        if (prov.IsProvisioned()) {
+            ESP_LOGI(TAG, "Already provisioned");
+            ESP_LOGI(TAG, "WiFi SSID: %s", prov.GetWiFiSSID().c_str());
+        } else {
+            ESP_LOGI(TAG, "Not provisioned, starting provisioning...");
+            prov.StartProvisioning();
+            
+            // 等待配网完成或超时
+            for (int i = 0; i < 60; i++) {
+                vTaskDelay(pdMS_TO_TICKS(1000));
+                if (prov.IsProvisioned()) {
+                    ESP_LOGI(TAG, "Provisioning completed");
+                    break;
+                }
+                ESP_LOGI(TAG, "Waiting for provisioning... %d/60", i + 1);
+            }
+            
+            prov.StopProvisioning();
+        }
+    } else {
+        ESP_LOGE(TAG, "Failed to initialize Rainmaker provisioning");
+    }
+    
+    ESP_LOGI(TAG, "Rainmaker provisioning test completed");
+}
+
+// 主测试函数
+extern "C" void app_main() {
+    ESP_LOGI(TAG, "Starting MODO Board comprehensive test...");
+    
+    // 等待系统稳定
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    
+    // 运行各项测试
+    TestModoBoard();
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    
+    TestWS2812();
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    
+    TestRC522();
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    
+    TestAXP2101();
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    
+    TestRainmakerProvisioning();
+    
+    ESP_LOGI(TAG, "All tests completed!");
+} 
