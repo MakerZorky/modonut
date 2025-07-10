@@ -116,20 +116,6 @@ void WifiBoard::StartNetwork() {
 #endif 
 
 #if BLE_CONNECT
-    // 检查NVS状态
-    esp_err_t nvs_ret = nvs_flash_init();
-    if (nvs_ret != ESP_OK) {
-        ESP_LOGE(TAG, "NVS Flash not initialized, attempting recovery");
-        nvs_flash_erase();
-        nvs_ret = nvs_flash_init();
-        if (nvs_ret != ESP_OK) {
-            ESP_LOGE(TAG, "NVS Flash recovery failed: %s", esp_err_to_name(nvs_ret));
-            ESP_LOGE(TAG, "Rainmaker requires NVS to function. Rebooting...");
-            vTaskDelay(pdMS_TO_TICKS(3000));
-            esp_restart();
-        }
-    }
-    
     app_network_init();
     
     /* Initialize the ESP RainMaker Agent.
@@ -141,28 +127,14 @@ void WifiBoard::StartNetwork() {
     esp_rmaker_node_t *node = esp_rmaker_node_init(&rainmaker_cfg, "ESP RainMaker Device", "modomodo");
     if (!node) {
         ESP_LOGE(TAG, "Could not initialise node. Aborting!!!");
-        ESP_LOGE(TAG, "This may be due to NVS Flash issues. Attempting recovery...");
-        
-        // 尝试恢复NVS
-        nvs_flash_erase();
-        nvs_flash_init();
-        
-        // 重新尝试初始化Rainmaker
-        node = esp_rmaker_node_init(&rainmaker_cfg, "ESP RainMaker Device", "modomodo");
-        if (!node) {
-            ESP_LOGE(TAG, "Rainmaker initialization failed even after NVS recovery");
-            ESP_LOGE(TAG, "System will continue without Rainmaker functionality");
-            application.Alert("Warning", "Rainmaker init failed, continuing without it");
-            return;
-        } else {
-            ESP_LOGI(TAG, "Rainmaker initialized successfully after NVS recovery");
-        }
+        vTaskDelay(5000/portTICK_PERIOD_MS);
+        abort();
     }
 
     bool wifi_provisioned = app_network_get_provisioned();
     if (!wifi_provisioned) {
         ESP_LOGI(TAG, "Starting provisioning");
-        application.Alert("Info", "Configuring WiFi");
+        application.PlaySound(Lang::Sounds::P3_ING_WIFICONFIG);
         // builtin_led->SetBlue();
         // builtin_led->Blink(1000, 500);
         /* Create a device and add the relevant parameters to it */
@@ -170,7 +142,7 @@ void WifiBoard::StartNetwork() {
         esp_rmaker_node_add_device(node, modomodo_device);
     } else {
         ESP_LOGI(TAG, "Already provisioned, starting Wi-Fi STA");
-        application.Alert("Info", "Connecting WiFi");
+        application.PlaySound(Lang::Sounds::P3_ING_WIFICONNECT);
     }
 
     /* Start the ESP RainMaker Agent.必须写在这里，因为每次联网都需要这句话 */
@@ -179,7 +151,7 @@ void WifiBoard::StartNetwork() {
     esp_err_t err = app_network_start(POP_TYPE_NONE);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Could not start Wifi. Aborting!!!");
-        application.Alert("Info", "wifi connection failed");
+        application.PlaySound(Lang::Sounds::P3_ERR_WIFICONNECT);
         vTaskDelay(pdMS_TO_TICKS(5000));
         abort();
     }

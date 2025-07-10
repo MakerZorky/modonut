@@ -146,6 +146,13 @@ namespace Lang {
         static_cast<size_t>(p3_err_reg_end - p3_err_reg_start)
         };
 
+        extern const char p3_err_wificonnect_start[] asm("_binary_err_wificonnect_p3_start");
+        extern const char p3_err_wificonnect_end[] asm("_binary_err_wificonnect_p3_end");
+        static const std::string_view P3_ERR_WIFICONNECT {
+        static_cast<const char*>(p3_err_wificonnect_start),
+        static_cast<size_t>(p3_err_wificonnect_end - p3_err_wificonnect_start)
+        };
+
         extern const char p3_exclamation_start[] asm("_binary_exclamation_p3_start");
         extern const char p3_exclamation_end[] asm("_binary_exclamation_p3_end");
         static const std::string_view P3_EXCLAMATION {
@@ -153,11 +160,60 @@ namespace Lang {
         static_cast<size_t>(p3_exclamation_end - p3_exclamation_start)
         };
 
+        extern const char p3_ing_ota_start[] asm("_binary_ing_ota_p3_start");
+        extern const char p3_ing_ota_end[] asm("_binary_ing_ota_p3_end");
+        static const std::string_view P3_ING_OTA {
+        static_cast<const char*>(p3_ing_ota_start),
+        static_cast<size_t>(p3_ing_ota_end - p3_ing_ota_start)
+        };
+
+        extern const char p3_ing_wificonfig_start[] asm("_binary_ing_wificonfig_p3_start");
+        extern const char p3_ing_wificonfig_end[] asm("_binary_ing_wificonfig_p3_end");
+        static const std::string_view P3_ING_WIFICONFIG {
+        static_cast<const char*>(p3_ing_wificonfig_start),
+        static_cast<size_t>(p3_ing_wificonfig_end - p3_ing_wificonfig_start)
+        };
+
+        extern const char p3_ing_wificonnect_start[] asm("_binary_ing_wificonnect_p3_start");
+        extern const char p3_ing_wificonnect_end[] asm("_binary_ing_wificonnect_p3_end");
+        static const std::string_view P3_ING_WIFICONNECT {
+        static_cast<const char*>(p3_ing_wificonnect_start),
+        static_cast<size_t>(p3_ing_wificonnect_end - p3_ing_wificonnect_start)
+        };
+
         extern const char p3_low_battery_start[] asm("_binary_low_battery_p3_start");
         extern const char p3_low_battery_end[] asm("_binary_low_battery_p3_end");
         static const std::string_view P3_LOW_BATTERY {
         static_cast<const char*>(p3_low_battery_start),
         static_cast<size_t>(p3_low_battery_end - p3_low_battery_start)
+        };
+
+        extern const char p3_max_vol_start[] asm("_binary_max_vol_p3_start");
+        extern const char p3_max_vol_end[] asm("_binary_max_vol_p3_end");
+        static const std::string_view P3_MAX_VOL {
+        static_cast<const char*>(p3_max_vol_start),
+        static_cast<size_t>(p3_max_vol_end - p3_max_vol_start)
+        };
+
+        extern const char p3_min_vol_start[] asm("_binary_min_vol_p3_start");
+        extern const char p3_min_vol_end[] asm("_binary_min_vol_p3_end");
+        static const std::string_view P3_MIN_VOL {
+        static_cast<const char*>(p3_min_vol_start),
+        static_cast<size_t>(p3_min_vol_end - p3_min_vol_start)
+        };
+
+        extern const char p3_suc_ota_start[] asm("_binary_suc_ota_p3_start");
+        extern const char p3_suc_ota_end[] asm("_binary_suc_ota_p3_end");
+        static const std::string_view P3_SUC_OTA {
+        static_cast<const char*>(p3_suc_ota_start),
+        static_cast<size_t>(p3_suc_ota_end - p3_suc_ota_start)
+        };
+
+        extern const char p3_suc_wificonnect_start[] asm("_binary_suc_wificonnect_p3_start");
+        extern const char p3_suc_wificonnect_end[] asm("_binary_suc_wificonnect_p3_end");
+        static const std::string_view P3_SUC_WIFICONNECT {
+        static_cast<const char*>(p3_suc_wificonnect_start),
+        static_cast<size_t>(p3_suc_wificonnect_end - p3_suc_wificonnect_start)
         };
 
         extern const char p3_success_start[] asm("_binary_success_p3_start");

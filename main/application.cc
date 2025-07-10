@@ -211,14 +211,8 @@ void Application::Alert(const char* status, const char* message, const char* emo
     // display->SetEmotion(emotion);
     // display->SetChatMessage("system", message);
     if (!sound.empty()) {
-        // 只有在音频编解码器可用时才播放声音
-        auto codec = Board::GetInstance().GetAudioCodec();
-        if (codec) {
-            ResetDecoder();
-            PlaySound(sound);
-        } else {
-            ESP_LOGW(TAG, "Audio codec not available, skipping sound playback");
-        }
+        ResetDecoder();
+        PlaySound(sound);
     }
 }
 
@@ -474,11 +468,9 @@ void Application::Start() {
     // wake_word_detect_.StartDetection();
 #endif
 
+    PlaySound(Lang::Sounds::P3_SUC_WIFICONNECT);
     SetDeviceState(kDeviceStateIdle);
     esp_timer_start_periodic(clock_timer_handle_, 1000000);
-
-    // 硬件初始化应该在板级代码中完成，这里只保留应用逻辑
-    // 板级代码会调用Application的回调函数来处理硬件事件
     
     //显示初始状态
     Board::GetInstance().ShowDeviceState("idle");

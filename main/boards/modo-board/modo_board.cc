@@ -110,14 +110,6 @@ private:
 
         // 音量增加按钮 - 只在音频可用时启用
         volume_up_button_.OnClick([this]() {
-            // 通知Application按钮事件
-            OnButtonPressed("volume_up");
-            
-            if (!es8311_available_) {
-                ESP_LOGI(TAG, "Volume up button pressed (audio not available)");
-                return;
-            }
-            
             auto codec = GetAudioCodec();
             auto volume = codec->output_volume() + 10;
             if (volume > 100) {
@@ -127,35 +119,13 @@ private:
             ShowVolumeIndicator(volume);
         });
 
-        volume_up_button_.OnLongPress([this]() {
-            // 通知Application长按事件
-            // OnButtonLongPressed("volume_up");
-            
-            // if (!es8311_available_) {
-            //     ESP_LOGI(TAG, "Volume up long press (audio not available)");
-            //     return;
-            // }
-            
-            // GetAudioCodec()->SetOutputVolume(100);
-            // ShowVolumeIndicator(100);
-
-            // 通知Application长按事件
-            OnButtonLongPressed("volume_up");
-            
+        volume_up_button_.OnLongPress([this]() {  
             ESP_LOGI(TAG, "Long press detected, clearing NVS");
             ClearNVS();
         });
 
         // 音量减少按钮 - 只在音频可用时启用
         volume_down_button_.OnClick([this]() {
-            // 通知Application按钮事件
-            OnButtonPressed("volume_down");
-            
-            if (!es8311_available_) {
-                ESP_LOGI(TAG, "Volume down button pressed (audio not available)");
-                return;
-            }
-            
             auto codec = GetAudioCodec();
             auto volume = codec->output_volume() - 10;
             if (volume < 0) {
@@ -165,18 +135,8 @@ private:
             ShowVolumeIndicator(volume);
         });
 
-        // volume_down_button_.OnLongPress([this]() {
-        //     // 通知Application长按事件
-        //     OnButtonLongPressed("volume_down");
-            
-        //     if (!es8311_available_) {
-        //         ESP_LOGI(TAG, "Volume down long press (audio not available)");
-        //         return;
-        //     }
-            
-        //     GetAudioCodec()->SetOutputVolume(0);
-        //     ShowVolumeIndicator(0);
-        // });
+        volume_down_button_.OnLongPress([this]() {
+        });
     }
 
     void InitializeWS2812() {
@@ -510,16 +470,6 @@ public:
         
         // 通知Application
         Application::GetInstance().OnNFCCardRemoved();
-    }
-
-    virtual void OnButtonPressed(const std::string& button_name) override {
-        ESP_LOGI(TAG, "Button pressed: %s", button_name.c_str());
-        // 可以在这里添加按钮音效或其他反馈
-    }
-
-    virtual void OnButtonLongPressed(const std::string& button_name) override {
-        ESP_LOGI(TAG, "Button long pressed: %s", button_name.c_str());
-        // 可以在这里添加长按反馈
     }
 
     // 硬件控制接口
