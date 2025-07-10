@@ -480,10 +480,10 @@ void Application::Start() {
     // 硬件初始化应该在板级代码中完成，这里只保留应用逻辑
     // 板级代码会调用Application的回调函数来处理硬件事件
     
-    // 显示初始状态
+    //显示初始状态
     Board::GetInstance().ShowDeviceState("idle");
     
-    // 显示网络状态
+    //显示网络状态
     Board::GetInstance().ShowNetworkStatus(false);
 
 #if 1
@@ -576,9 +576,7 @@ void Application::OnAudioOutput() {
         if (device_state_ == kDeviceStateIdle) {
             auto duration = std::chrono::duration_cast<std::chrono::seconds>(now - last_output_time_).count();
             if (duration > max_silence_seconds) {
-                // 通过Board接口控制音频输出，而不是直接控制硬件
-                // codec->EnableOutput(false);
-                Board::GetInstance().ShowDeviceState("idle");
+                codec->EnableOutput(false);
             }
         }
         return;

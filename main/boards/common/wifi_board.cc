@@ -1,6 +1,5 @@
 #include "wifi_board.h"
 
-#include "display.h"
 #include "application.h"
 #include "system_info.h"
 #include "font_awesome_symbols.h"
@@ -259,7 +258,6 @@ void WifiBoard::ResetWifiConfiguration() {
         Settings settings("wifi", true);
         settings.SetInt("force_ap", 1);
     }
-    GetDisplay()->ShowNotification(Lang::Strings::ENTERING_WIFI_CONFIG_MODE);
     vTaskDelay(pdMS_TO_TICKS(1000));
     // Reboot the device
     esp_restart();

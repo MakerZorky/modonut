@@ -1,3 +1,4 @@
+#include "wifi_board.h"
 #include "audio_codecs/box_audio_codec.h"
 #include "system_reset.h"
 #include "application.h"
@@ -17,7 +18,7 @@
 
 #define TAG "ModoBoard"
 
-class ModoBoard : public Board {
+class ModoBoard : public WifiBoard {
 private:
     // 硬件组件
     Button boot_button_;
@@ -78,34 +79,34 @@ private:
 
     void InitializeButtons() {
         // BOOT按钮：长按清空NVS，短按切换聊天状态或进入配网
-        boot_button_.OnClick([this]() {
-            OnButtonPressed("boot");
-            auto& app = Application::GetInstance();
+        // boot_button_.OnClick([this]() {
+        //     OnButtonPressed("boot");
+        //     auto& app = Application::GetInstance();
             
-            // 检查是否已经在配网过程中
-            if (app.GetDeviceState() == kDeviceStateStarting && !is_connected_) {
-                // 检查是否已经在配网
-                static bool provisioning_started = false;
-                if (!provisioning_started) {
-                    // 启动RainMaker BLE配网
-                    ESP_LOGI(TAG, "Starting RainMaker BLE provisioning...");
-                    provisioning_started = true;
-                    StartNetwork();
-                } else {
-                    ESP_LOGI(TAG, "Provisioning already started, ignoring button press");
-                }
-            } else {
-                app.ToggleChatState();
-            }
-        });
+        //     // 检查是否已经在配网过程中
+        //     if (app.GetDeviceState() == kDeviceStateStarting && !is_connected_) {
+        //         // 检查是否已经在配网
+        //         static bool provisioning_started = false;
+        //         if (!provisioning_started) {
+        //             // 启动RainMaker BLE配网
+        //             ESP_LOGI(TAG, "Starting RainMaker BLE provisioning...");
+        //             provisioning_started = true;
+        //             StartNetwork();
+        //         } else {
+        //             ESP_LOGI(TAG, "Provisioning already started, ignoring button press");
+        //         }
+        //     } else {
+        //         app.ToggleChatState();
+        //     }
+        // });
         
-        boot_button_.OnLongPress([this]() {
-            // 通知Application长按事件
-            OnButtonLongPressed("boot");
+        // boot_button_.OnLongPress([this]() {
+        //     // 通知Application长按事件
+        //     OnButtonLongPressed("boot");
             
-            ESP_LOGI(TAG, "Long press detected, clearing NVS");
-            ClearNVS();
-        });
+        //     ESP_LOGI(TAG, "Long press detected, clearing NVS");
+        //     ClearNVS();
+        // });
 
         // 音量增加按钮 - 只在音频可用时启用
         volume_up_button_.OnClick([this]() {
@@ -128,15 +129,21 @@ private:
 
         volume_up_button_.OnLongPress([this]() {
             // 通知Application长按事件
+            // OnButtonLongPressed("volume_up");
+            
+            // if (!es8311_available_) {
+            //     ESP_LOGI(TAG, "Volume up long press (audio not available)");
+            //     return;
+            // }
+            
+            // GetAudioCodec()->SetOutputVolume(100);
+            // ShowVolumeIndicator(100);
+
+            // 通知Application长按事件
             OnButtonLongPressed("volume_up");
             
-            if (!es8311_available_) {
-                ESP_LOGI(TAG, "Volume up long press (audio not available)");
-                return;
-            }
-            
-            GetAudioCodec()->SetOutputVolume(100);
-            ShowVolumeIndicator(100);
+            ESP_LOGI(TAG, "Long press detected, clearing NVS");
+            ClearNVS();
         });
 
         // 音量减少按钮 - 只在音频可用时启用
@@ -158,18 +165,18 @@ private:
             ShowVolumeIndicator(volume);
         });
 
-        volume_down_button_.OnLongPress([this]() {
-            // 通知Application长按事件
-            OnButtonLongPressed("volume_down");
+        // volume_down_button_.OnLongPress([this]() {
+        //     // 通知Application长按事件
+        //     OnButtonLongPressed("volume_down");
             
-            if (!es8311_available_) {
-                ESP_LOGI(TAG, "Volume down long press (audio not available)");
-                return;
-            }
+        //     if (!es8311_available_) {
+        //         ESP_LOGI(TAG, "Volume down long press (audio not available)");
+        //         return;
+        //     }
             
-            GetAudioCodec()->SetOutputVolume(0);
-            ShowVolumeIndicator(0);
-        });
+        //     GetAudioCodec()->SetOutputVolume(0);
+        //     ShowVolumeIndicator(0);
+        // });
     }
 
     void InitializeWS2812() {
@@ -657,15 +664,15 @@ public:
         ESP_LOGI(TAG, "Ready for RainMaker provisioning - press BOOT button to start");
     }
 
-    std::string GetBoardJson() override { return "{}"; }
-    std::string GetBoardType() override { return "modo-board"; }
-    Http* CreateHttp() override { return nullptr; }
-    WebSocket* CreateWebSocket() override { return nullptr; }
-    Mqtt* CreateMqtt() override { return nullptr; }
-    Udp* CreateUdp() override { return nullptr; }
-    void StartNetwork() override { /* 可留空 */ }
-    const char* GetNetworkStateIcon() override { return nullptr; }
-    void SetPowerSaveMode(bool) override { /* 可留空 */ }
+    // std::string GetBoardJson() override { return "{}"; }
+    // std::string GetBoardType() override { return "modo-board"; }
+    // Http* CreateHttp() override { return nullptr; }
+    // WebSocket* CreateWebSocket() override { return nullptr; }
+    // Mqtt* CreateMqtt() override { return nullptr; }
+    // Udp* CreateUdp() override { return nullptr; }
+    // void StartNetwork() override { /* 可留空 */ }
+    // const char* GetNetworkStateIcon() override { return nullptr; }
+    // void SetPowerSaveMode(bool) override { /* 可留空 */ }
 };
 
 // 静态成员变量初始化
