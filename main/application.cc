@@ -370,79 +370,86 @@ void Application::Start() {
         SetDeviceState(kDeviceStateIdle);
         Alert(Lang::Strings::ERROR, message.c_str(), "sad", Lang::Sounds::P3_EXCLAMATION);
     });
-    
-    // 只有在音频编解码器可用时才设置音频相关回调
-    if (codec) {
-        protocol_->OnIncomingAudio([this](std::vector<uint8_t>&& data) {
-            std::lock_guard<std::mutex> lock(mutex_);
-            audio_decode_queue_.emplace_back(std::move(data));
-        });
-        protocol_->OnAudioChannelOpened([this, codec, &board]() {
-            board.SetPowerSaveMode(false);
-            if (protocol_->server_sample_rate() != codec->output_sample_rate()) {
-                ESP_LOGW(TAG, "Server sample rate %d does not match device output sample rate %d, resampling may cause distortion",
-                    protocol_->server_sample_rate(), codec->output_sample_rate());
+    protocol_->OnIncomingAudio([this](std::vector<uint8_t>&& data) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        audio_decode_queue_.emplace_back(std::move(data));
+    });
+    protocol_->OnAudioChannelOpened([this, codec, &board]() {
+        board.SetPowerSaveMode(false);
+        if (protocol_->server_sample_rate() != codec->output_sample_rate()) {
+            ESP_LOGW(TAG, "Server sample rate %d does not match device output sample rate %d, resampling may cause distortion",
+                protocol_->server_sample_rate(), codec->output_sample_rate());
+        }
+        SetDecodeSampleRate(protocol_->server_sample_rate(), protocol_->server_frame_duration());
+    });
+    protocol_->OnAudioChannelClosed([this, &board]() {
+        board.SetPowerSaveMode(true);
+    });
+    protocol_->OnIncomingJson([this](const cJSON* root) {
+        // Parse JSON data
+        auto type = cJSON_GetObjectItem(root, "type");
+        if (strcmp(type->valuestring, "tts") == 0) {
+            auto state = cJSON_GetObjectItem(root, "state");
+            if (strcmp(state->valuestring, "start") == 0) {
+                Schedule([this]() {
+                    aborted_ = false;
+                    if (device_state_ == kDeviceStateIdle || device_state_ == kDeviceStateListening) {
+                        SetDeviceState(kDeviceStateSpeaking);
+                    }
+                });
+            } else if (strcmp(state->valuestring, "stop") == 0) {
+                Schedule([this]() {
+                    background_task_->WaitForCompletion();
+                    if (device_state_ == kDeviceStateSpeaking) {
+                        if (listening_mode_ == kListeningModeManualStop) {
+                            SetDeviceState(kDeviceStateIdle);
+                        } else {
+                            SetDeviceState(kDeviceStateListening);
+                        }
+                    }
+                });
+            } else if (strcmp(state->valuestring, "sentence_start") == 0) {
+                auto text = cJSON_GetObjectItem(root, "text");
+                if (text != NULL) {
+                    ESP_LOGI(TAG, "<< %s", text->valuestring);
+                }
             }
-            SetDecodeSampleRate(protocol_->server_sample_rate(), protocol_->server_frame_duration());
-        });
-        protocol_->OnAudioChannelClosed([this, &board]() {
-            board.SetPowerSaveMode(true);
-            Schedule([this]() {
-                SetDeviceState(kDeviceStateIdle);
-            });
-        });
-    } else {
-        // 音频编解码器不可用时，设置空的音频回调
-        protocol_->OnIncomingAudio([](std::vector<uint8_t>&& data) {
-            // 忽略音频数据
-        });
-        protocol_->OnAudioChannelOpened([this, &board]() {
-            board.SetPowerSaveMode(false);
-        });
-        protocol_->OnAudioChannelClosed([this, &board]() {
-            board.SetPowerSaveMode(true);
-            Schedule([this]() {
-                SetDeviceState(kDeviceStateIdle);
-            });
-        });
-    }
+        } else if (strcmp(type->valuestring, "stt") == 0) {
+            auto text = cJSON_GetObjectItem(root, "text");
+            if (text != NULL) {
+                ESP_LOGI(TAG, ">> %s", text->valuestring);
+            }
+        } else if (strcmp(type->valuestring, "llm") == 0) {
+            auto emotion = cJSON_GetObjectItem(root, "emotion");
+            if (emotion != NULL) {
+            }
+        }
+    });
     
     protocol_->Start();
 
-    // 确保音频编解码器已经启动后再初始化音频处理器
-    // 音频处理器初始化应该在硬件初始化完成后进行
-    ESP_LOGI(TAG, "Waiting for audio codec to be ready...");
-    vTaskDelay(pdMS_TO_TICKS(1000)); // 给硬件初始化一些时间
-
 #if CONFIG_USE_AUDIO_PROCESSOR
-    // 检查音频编解码器是否已启动
-    if (codec && codec->input_enabled() && codec->output_enabled()) {
-        ESP_LOGI(TAG, "Initializing audio processor...");
-        audio_processor_.Initialize(codec, realtime_chat_enabled_);
-        audio_processor_.OnOutput([this](std::vector<int16_t>&& data) {
-            background_task_->Schedule([this, data = std::move(data)]() mutable {
-                opus_encoder_->Encode(std::move(data), [this](std::vector<uint8_t>&& opus) {
-                    Schedule([this, opus = std::move(opus)]() {
-                        protocol_->SendAudio(opus);
-                    });
+    audio_processor_.Initialize(codec, realtime_chat_enabled_);
+    audio_processor_.OnOutput([this](std::vector<int16_t>&& data) {
+        background_task_->Schedule([this, data = std::move(data)]() mutable {
+            opus_encoder_->Encode(std::move(data), [this](std::vector<uint8_t>&& opus) {
+                Schedule([this, opus = std::move(opus)]() {
+                    protocol_->SendAudio(opus);
                 });
             });
         });
-        audio_processor_.OnVadStateChange([this](bool speaking) {
-            if (device_state_ == kDeviceStateListening) {
-                Schedule([this, speaking]() {
-                    if (speaking) {
-                        voice_detected_ = true;
-                    } else {
-                        voice_detected_ = false;
-                    }
-                });
-            }
-        });
-        ESP_LOGI(TAG, "Audio processor initialized successfully");
-    } else {
-        ESP_LOGW(TAG, "Audio codec not ready, skipping audio processor initialization");
-    }
+    });
+    audio_processor_.OnVadStateChange([this](bool speaking) {
+        if (device_state_ == kDeviceStateListening) {
+            Schedule([this, speaking]() {
+                if (speaking) {
+                    voice_detected_ = true;
+                } else {
+                    voice_detected_ = false;
+                }
+            });
+        }
+    });
 #endif
 
 #if CONFIG_USE_WAKE_WORD_DETECT
@@ -454,16 +461,10 @@ void Application::Start() {
     PlaySound(Lang::Sounds::P3_SUC_WIFICONNECT);
     SetDeviceState(kDeviceStateIdle);
     esp_timer_start_periodic(clock_timer_handle_, 1000000);
-    
-    //显示初始状态
-    Board::GetInstance().ShowDeviceState("idle");
-    
-    //显示网络状态
-    Board::GetInstance().ShowNetworkStatus(false);
 
 #if 1
     while (true) {
-        SystemInfo::PrintRealTimeStats(pdMS_TO_TICKS(1000));
+        //SystemInfo::PrintRealTimeStats(pdMS_TO_TICKS(1000));
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
 #endif
@@ -523,15 +524,6 @@ void Application::MainLoop() {
 // The Audio Loop is used to input and output audio data
 void Application::AudioLoop() {
     auto codec = Board::GetInstance().GetAudioCodec();
-    
-    // 如果音频编解码器不可用，直接返回
-    if (!codec) {
-        ESP_LOGW(TAG, "Audio codec not available, audio loop will not run");
-        while (true) {
-            vTaskDelay(pdMS_TO_TICKS(1000));
-        }
-    }
-    
     while (true) {
         OnAudioInput();
         if (codec->output_enabled()) {
@@ -568,12 +560,6 @@ void Application::OnAudioOutput() {
 
     background_task_->Schedule([this, codec, opus = std::move(opus)]() mutable {
         if (aborted_) {
-            return;
-        }
-
-        // 只有在音频解码器可用时才处理音频
-        if (!opus_decoder_) {
-            ESP_LOGW(TAG, "Audio decoder not available, skipping audio output");
             return;
         }
 
@@ -681,9 +667,6 @@ void Application::SetDeviceState(DeviceState state) {
     auto previous_state = device_state_;
     device_state_ = state;
     ESP_LOGI(TAG, "STATE: %s", STATE_STRINGS[device_state_]);
-    
-    // 通知Board接口设备状态变化
-    OnDeviceStateChanged(state);
     
     // The state is changed, wait for all background tasks to finish
     background_task_->WaitForCompletion();
@@ -857,38 +840,6 @@ void Application::OnNFCCardRemoved() {
 }
 
 // === 新增设备状态反馈方法实现 ===
-
-void Application::OnDeviceStateChanged(DeviceState new_state) {
-    ESP_LOGI(TAG, "Device state changed to: %s", STATE_STRINGS[new_state]);
-    
-    // 通过Board接口显示设备状态
-    std::string state_str;
-    switch (new_state) {
-        case kDeviceStateIdle:
-            state_str = "idle";
-            break;
-        case kDeviceStateListening:
-            state_str = "listening";
-            break;
-        case kDeviceStateSpeaking:
-            state_str = "speaking";
-            break;
-        case kDeviceStateConnecting:
-            state_str = "connecting";
-            break;
-        case kDeviceStateUpgrading:
-            state_str = "upgrading";
-            break;
-        case kDeviceStateFatalError:
-            state_str = "error";
-            break;
-        default:
-            state_str = "unknown";
-            break;
-    }
-    
-    Board::GetInstance().ShowDeviceState(state_str);
-}
 
 void Application::OnNetworkStatusChanged(bool connected) {
     ESP_LOGI(TAG, "Network status changed: %s", connected ? "Connected" : "Disconnected");

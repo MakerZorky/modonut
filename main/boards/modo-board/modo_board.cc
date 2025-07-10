@@ -144,6 +144,8 @@ private:
         });
 
         volume_down_button_.OnLongPress([this]() {
+            auto& app = Application::GetInstance();
+            app.ToggleChatState();
         });
     }
 
