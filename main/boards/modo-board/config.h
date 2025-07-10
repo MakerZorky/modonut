@@ -27,8 +27,8 @@
 #define VOLUME_DOWN_BUTTON_GPIO GPIO_NUM_5
 
 // WS2812 LED配置
-#define WS2812_GPIO             GPIO_NUM_48
-#define WS2812_LED_COUNT        8
+#define WS2812_GPIO             GPIO_NUM_6
+#define WS2812_LED_COUNT        16
 
 // RC522 NFC配置
 #define RC522_SPI_HOST          SPI2_HOST
@@ -45,6 +45,6 @@
 #define AXP2101_I2C_ADDR        0x36
 
 // 其他GPIO配置
-#define BUILTIN_LED_GPIO        GPIO_NUM_6
+#define BUILTIN_LED_GPIO        GPIO_NUM_1
 
 #endif // _MODO_BOARD_CONFIG_H_ 

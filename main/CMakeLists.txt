@@ -7,8 +7,6 @@ set(SOURCES "audio_codecs/audio_codec.cc"
             "led/circular_strip.cc"
             "led/gpio_led.cc"
             "protocols/protocol.cc"
-            "iot/thing.cc"
-            "iot/thing_manager.cc"
             "system_info.cc"
             "application.cc"
             "ota.cc"
@@ -29,9 +27,7 @@ list(APPEND SOURCES ${BOARD_COMMON_SOURCES})
 list(APPEND INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/boards/common)
 
 # 添加新的硬件驱动文件
-list(APPEND SOURCES "boards/common/ws2812_led.cc")
 list(APPEND SOURCES "boards/common/rc522.cc")
-# list(APPEND SOURCES "boards/common/rainmaker_provisioning.cc")
 
 # 根据 BOARD_TYPE 配置添加对应的板级文件
 if(CONFIG_BOARD_TYPE_MODO_BOARD)
@@ -85,7 +81,7 @@ idf_component_register(SRCS ${SOURCES}
                     EMBED_FILES ${LANG_SOUNDS} ${COMMON_SOUNDS}
                     INCLUDE_DIRS ${INCLUDE_DIRS}
                     WHOLE_ARCHIVE
-                    REQUIRES esp_system esp_app_format
+                    REQUIRES esp_system esp_app_format esp_driver_dac
                     PRIV_REQUIRES spi_flash app_update app_network esp_rainmaker
                     )
 

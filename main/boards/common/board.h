@@ -37,13 +37,13 @@ public:
     virtual std::string GetUuid() { return uuid_; }
     virtual Backlight* GetBacklight() { return nullptr; }
     virtual Led* GetLed();
+    virtual Led* GetCircularStrip();
     virtual AudioCodec* GetAudioCodec() = 0;
     virtual Http* CreateHttp() = 0;
     virtual WebSocket* CreateWebSocket() = 0;
     virtual Mqtt* CreateMqtt() = 0;
     virtual Udp* CreateUdp() = 0;
     virtual void StartNetwork() = 0;
-    virtual const char* GetNetworkStateIcon() = 0;
     virtual bool GetBatteryLevel(int &level, bool& charging, bool& discharging);
     virtual std::string GetJson();
     virtual void SetPowerSaveMode(bool enabled) = 0;
@@ -65,7 +65,6 @@ public:
     virtual void SetLedColor(int r, int g, int b) { /* 默认实现：无操作 */ }
     virtual void SetLedPattern(const std::string& pattern) { /* 默认实现：无操作 */ }
     virtual void PlayNotificationSound(const std::string& sound_type) { /* 默认实现：无操作 */ }
-    virtual void Vibrate(int duration_ms) { /* 默认实现：无操作 */ }
     
     // === 新增音频控制接口 ===
     virtual void EnableAudioInput(bool enable) { /* 默认实现：无操作 */ }

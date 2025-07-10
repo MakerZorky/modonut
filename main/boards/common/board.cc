@@ -52,6 +52,11 @@ Led* Board::GetLed() {
     return &led;
 }
 
+Led* Board::GetCircularStrip() {
+    static NoLed strip;
+    return &strip;
+}
+
 std::string Board::GetJson() {
     /* 
         {

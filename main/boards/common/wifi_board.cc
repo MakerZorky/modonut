@@ -2,7 +2,6 @@
 
 #include "application.h"
 #include "system_info.h"
-#include "font_awesome_symbols.h"
 #include "settings.h"
 #include "assets/lang_config.h"
 
@@ -184,24 +183,6 @@ Mqtt* WifiBoard::CreateMqtt() {
 
 Udp* WifiBoard::CreateUdp() {
     return new EspUdp();
-}
-
-const char* WifiBoard::GetNetworkStateIcon() {
-    if (wifi_config_mode_) {
-        return FONT_AWESOME_WIFI;
-    }
-    auto& wifi_station = WifiStation::GetInstance();
-    if (!wifi_station.IsConnected()) {
-        return FONT_AWESOME_WIFI_OFF;
-    }
-    int8_t rssi = wifi_station.GetRssi();
-    if (rssi >= -60) {
-        return FONT_AWESOME_WIFI;
-    } else if (rssi >= -70) {
-        return FONT_AWESOME_WIFI_FAIR;
-    } else {
-        return FONT_AWESOME_WIFI_WEAK;
-    }
 }
 
 std::string WifiBoard::GetBoardJson() {

@@ -5,12 +5,9 @@
 #include "audio_codec.h"
 #include "mqtt_protocol.h"
 #include "websocket_protocol.h"
-#include "font_awesome_symbols.h"
-#include "iot/thing_manager.h"
 #include "assets/lang_config.h"
 #include "boards/common/button.h"
 #include "boards/modo-board/config.h"
-#include "boards/common/ws2812_led.h"
 #include "boards/common/rc522.h"
 #include "boards/common/axp2101.h"
 #include <nvs_flash.h>
@@ -387,12 +384,6 @@ void Application::Start() {
                     protocol_->server_sample_rate(), codec->output_sample_rate());
             }
             SetDecodeSampleRate(protocol_->server_sample_rate(), protocol_->server_frame_duration());
-            auto& thing_manager = iot::ThingManager::GetInstance();
-            protocol_->SendIotDescriptors(thing_manager.GetDescriptorsJson());
-            std::string states;
-            if (thing_manager.GetStatesJson(states, false)) {
-                protocol_->SendIotStates(states);
-            }
         });
         protocol_->OnAudioChannelClosed([this, &board]() {
             board.SetPowerSaveMode(true);
@@ -407,12 +398,6 @@ void Application::Start() {
         });
         protocol_->OnAudioChannelOpened([this, &board]() {
             board.SetPowerSaveMode(false);
-            auto& thing_manager = iot::ThingManager::GetInstance();
-            protocol_->SendIotDescriptors(thing_manager.GetDescriptorsJson());
-            std::string states;
-            if (thing_manager.GetStatesJson(states, false)) {
-                protocol_->SendIotStates(states);
-            }
         });
         protocol_->OnAudioChannelClosed([this, &board]() {
             board.SetPowerSaveMode(true);
@@ -451,8 +436,6 @@ void Application::Start() {
                     } else {
                         voice_detected_ = false;
                     }
-                    auto led = Board::GetInstance().GetLed();
-                    led->OnStateChanged();
                 });
             }
         });
@@ -706,14 +689,11 @@ void Application::SetDeviceState(DeviceState state) {
     background_task_->WaitForCompletion();
 
     auto& board = Board::GetInstance();
-    // auto display = board.GetDisplay();
-    auto led = board.GetLed();
-    led->OnStateChanged();
+    auto CircularStrip = Board::GetInstance().GetCircularStrip();
+    CircularStrip->OnStateChanged();
     switch (state) {
         case kDeviceStateUnknown:
         case kDeviceStateIdle:
-            // display->SetStatus(Lang::Strings::STANDBY);
-            // display->SetEmotion("neutral");
 #if CONFIG_USE_AUDIO_PROCESSOR
             audio_processor_.Stop();
 #endif
@@ -722,16 +702,8 @@ void Application::SetDeviceState(DeviceState state) {
 #endif
             break;
         case kDeviceStateConnecting:
-            // display->SetStatus(Lang::Strings::CONNECTING);
-            // display->SetEmotion("neutral");
-            // display->SetChatMessage("system", "");
             break;
         case kDeviceStateListening:
-            // display->SetStatus(Lang::Strings::LISTENING);
-            // display->SetEmotion("neutral");
-
-            // Update the IoT states before sending the start listening command
-            UpdateIotStates();
 
             // Make sure the audio processor is running
 #if CONFIG_USE_AUDIO_PROCESSOR
@@ -808,14 +780,6 @@ void Application::SetDecodeSampleRate(int sample_rate, int frame_duration) {
     if (codec && opus_decoder_->sample_rate() != codec->output_sample_rate()) {
         ESP_LOGI(TAG, "Resampling audio from %d to %d", opus_decoder_->sample_rate(), codec->output_sample_rate());
         output_resampler_.Configure(opus_decoder_->sample_rate(), codec->output_sample_rate());
-    }
-}
-
-void Application::UpdateIotStates() {
-    auto& thing_manager = iot::ThingManager::GetInstance();
-    std::string states;
-    if (thing_manager.GetStatesJson(states, true)) {
-        protocol_->SendIotStates(states);
     }
 }
 

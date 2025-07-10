@@ -26,7 +26,6 @@
 #endif
 
 #include "boards/common/button.h"
-#include "boards/common/ws2812_led.h"
 #include "boards/common/rc522.h"
 #include "boards/common/axp2101.h"
 #include "boards/common/i2c_device.h"
@@ -71,7 +70,6 @@ public:
     void ToggleChatState();
     void StartListening();
     void StopListening();
-    void UpdateIotStates();
     void Reboot();
     void WakeWordInvoke(const std::string& wake_word);
     void PlaySound(const std::string_view& sound);

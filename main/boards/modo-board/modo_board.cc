@@ -4,9 +4,8 @@
 #include "application.h"
 #include "button.h"
 #include "config.h"
-#include "iot/thing_manager.h"
 #include "led/single_led.h"
-#include "ws2812_led.h"
+#include "led/circular_strip.h"
 #include "rc522.h"
 #include "axp2101.h"
 #include "assets/lang_config.h"
@@ -14,6 +13,7 @@
 #include <esp_log.h>
 #include <driver/i2c_master.h>
 #include <driver/spi_master.h>
+#include "driver/dac_oneshot.h"
 #include <nvs_flash.h>
 
 #define TAG "ModoBoard"
@@ -24,7 +24,6 @@ private:
     Button boot_button_;
     Button volume_up_button_;
     Button volume_down_button_;
-    Ws2812Led* ws2812_led_;
     Rc522* rc522_;
     Axp2101* axp2101_;
     
@@ -76,6 +75,15 @@ private:
         ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_bus_cfg, &axp2101_i2c_bus_));
         ESP_LOGI(TAG, "AXP2101 I2C bus initialized");
     }
+
+    // void InitializeDAC() {
+    //     dac_oneshot_handle_t dac1_handle;
+    //     dac_oneshot_config_t dac1_config = { .chan_id = DAC_CHAN_1 };
+    //     ESP_ERROR_CHECK(dac_oneshot_new_channel(&dac1_config, &dac1_handle));
+    //     uint8_t dac_value = static_cast<uint8_t>(2.5/3.3*255);
+    //     ESP_ERROR_CHECK(dac_oneshot_output_voltage(dac1_handle, dac_value));
+    //     ESP_LOGI("DAC", "Set DAC1(GPIO17) output to ~2.5V (raw=%d)", dac_value);
+    // }
 
     void InitializeButtons() {
         // BOOT按钮：长按清空NVS，短按切换聊天状态或进入配网
@@ -139,12 +147,6 @@ private:
         });
     }
 
-    void InitializeWS2812() {
-        ws2812_led_ = new Ws2812Led(WS2812_GPIO, WS2812_LED_COUNT);
-        ws2812_led_->SetAllPixels(0, 0, 255); // 蓝色表示待机
-        ws2812_led_->Show();
-    }
-
     void InitializeRC522() {
         rc522_ = new Rc522(RC522_SPI_HOST, RC522_GPIO_MISO, RC522_GPIO_MOSI, 
                            RC522_GPIO_SCLK, RC522_GPIO_CS, RC522_GPIO_RST);
@@ -189,46 +191,15 @@ private:
     void ClearNVS() {
         ESP_LOGI(TAG, "Clearing NVS...");
         
-        // 显示清除状态
-        if (ws2812_led_) {
-            ws2812_led_->SetAllPixels(255, 255, 0); // 黄色表示正在清除
-            ws2812_led_->Show();
-        }
-        
         // 清除NVS
         esp_err_t ret = nvs_flash_erase();
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Failed to erase NVS: %s", esp_err_to_name(ret));
-            if (ws2812_led_) {
-                ws2812_led_->SetAllPixels(255, 0, 0); // 红色表示失败
-                ws2812_led_->Show();
-            }
             vTaskDelay(pdMS_TO_TICKS(2000));
             return;
         }
-        
-        // 重新初始化NVS
-        ret = nvs_flash_init();
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to reinitialize NVS: %s", esp_err_to_name(ret));
-            if (ws2812_led_) {
-                ws2812_led_->SetAllPixels(255, 0, 0); // 红色表示失败
-                ws2812_led_->Show();
-            }
-            vTaskDelay(pdMS_TO_TICKS(2000));
-            return;
-        }
-        
         ESP_LOGI(TAG, "NVS cleared and reinitialized successfully");
-        
-        // 显示成功状态
-        if (ws2812_led_) {
-            ws2812_led_->SetAllPixels(0, 255, 0); // 绿色表示成功
-            ws2812_led_->Show();
-        }
-        
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        
+    
         // 重启设备
         ESP_LOGI(TAG, "Restarting device...");
         esp_restart();
@@ -240,29 +211,6 @@ private:
         
         // 可以在这里添加低电量警告音效
         PlayNotificationSound("low_battery");
-    }
-
-    void OnProvisioningSuccess() {
-        ESP_LOGI(TAG, "Provisioning successful");
-        ws2812_led_->SetAllPixels(0, 255, 0); // 绿色表示成功
-        ws2812_led_->Show();
-        vTaskDelay(pdMS_TO_TICKS(2000));
-        // UpdateStatusDisplay(); // 删除
-    }
-
-    void OnProvisioningFailure(const std::string& error) {
-        ESP_LOGE(TAG, "Provisioning failed: %s", error.c_str());
-        ws2812_led_->SetAllPixels(255, 0, 0); // 红色表示失败
-        ws2812_led_->Show();
-        vTaskDelay(pdMS_TO_TICKS(2000));
-        // UpdateStatusDisplay(); // 删除
-    }
-
-    // 物联网初始化
-    void InitializeIot() {
-        auto& thing_manager = iot::ThingManager::GetInstance();
-        thing_manager.AddThing(iot::CreateThing("Speaker"));
-        thing_manager.AddThing(iot::CreateThing("Lamp"));
     }
 
     bool DetectES8311() {
@@ -329,14 +277,19 @@ public:
                   volume_down_button_(VOLUME_DOWN_BUTTON_GPIO) {
         ESP_LOGI(TAG, "Initializing MODO board...");
         
-        // // 在构造函数中完成所有硬件初始化
-        InitializeAllHardware();
+        InitializeI2c_CODEC();
+        //InitializeDAC();
+        InitializeButtons();
+        ESP_LOGI(TAG, "Buttons initialized");
+        InitializeRC522();
+        ESP_LOGI(TAG, "RC522 NFC initialized");
+        // InitializeI2c_AXP2101();
+        // InitializeAXP2101();
         
         ESP_LOGI(TAG, "MODO board initialization completed");
     }
 
     ~ModoBoard() {
-        if (ws2812_led_) delete ws2812_led_;
         if (rc522_) delete rc522_;
         if (axp2101_) delete axp2101_;
         if (i2c_bus_) i2c_del_master_bus(i2c_bus_);
@@ -346,6 +299,11 @@ public:
     virtual Led* GetLed() override {
         static SingleLed led(BUILTIN_LED_GPIO);
         return &led;
+    }
+
+    virtual Led* GetCircularStrip() override{
+        static CircularStrip strip(WS2812_GPIO, WS2812_LED_COUNT);
+        return &strip;
     }
 
     virtual AudioCodec* GetAudioCodec() override {
@@ -365,97 +323,36 @@ public:
             AUDIO_INPUT_REFERENCE);
         return &audio_codec;
     }
-
-    // 设置连接状态
-    void SetConnected(bool connected) {
-        is_connected_ = connected;
-        // UpdateStatusDisplay(); // 删除
-    }
-
-    // === 实现新的Board接口 ===
     
     // 硬件状态指示接口
-    virtual void ShowVolumeIndicator(int volume) override {
-        if (!ws2812_led_) return;
+    // virtual void ShowBatteryLevel(int level) override {
+    //     if (!ws2812_led_) return;
         
-        int led_count = (volume * WS2812_LED_COUNT) / 100;
-        ws2812_led_->Clear();
-        
-        for (int i = 0; i < led_count; i++) {
-            if (volume > 80) {
-                ws2812_led_->SetPixel(i, 255, 0, 0); // 红色
-            } else if (volume > 40) {
-                ws2812_led_->SetPixel(i, 255, 255, 0); // 黄色
-            } else {
-                ws2812_led_->SetPixel(i, 0, 255, 0); // 绿色
-            }
-        }
-        ws2812_led_->Show();
-        
-        // 3秒后恢复状态显示
-        vTaskDelay(pdMS_TO_TICKS(3000));
-        // UpdateStatusDisplay(); // 删除
-    }
+    //     if (level < 20) {
+    //         ws2812_led_->SetAllPixels(255, 0, 0); // 红色
+    //     } else {
+    //         ws2812_led_->ShowBatteryLevel(level);
+    //     }
+    //     ws2812_led_->Show();
+    // }
 
-    virtual void ShowBatteryLevel(int level) override {
-        if (!ws2812_led_) return;
+    // virtual void OnChargingStateChanged(bool charging) override {
+    //     ESP_LOGI(TAG, "Charging state changed: %s", charging ? "Charging" : "Not charging");
+    //     if (!ws2812_led_) return;
         
-        if (level < 20) {
-            ws2812_led_->SetAllPixels(255, 0, 0); // 红色
-        } else {
-            ws2812_led_->ShowBatteryLevel(level);
-        }
-        ws2812_led_->Show();
-    }
-
-    virtual void OnChargingStateChanged(bool charging) override {
-        ESP_LOGI(TAG, "Charging state changed: %s", charging ? "Charging" : "Not charging");
-        if (!ws2812_led_) return;
-        
-        if (charging) {
-            ws2812_led_->SetAllPixels(255, 0, 255); // 紫色
-        } else {
-            // UpdateStatusDisplay(); // 删除
-        }
-        ws2812_led_->Show();
-    }
-
-    virtual void ShowNetworkStatus(bool connected) override {
-        is_connected_ = connected;
-        // UpdateStatusDisplay(); // 删除
-        
-        // 播放网络状态提示音
-        if (connected) {
-            PlayNotificationSound("wifi_connected");
-        } else {
-            PlayNotificationSound("wifi_disconnected");
-        }
-    }
-
-    virtual void ShowDeviceState(const std::string& state) override {
-        ESP_LOGI(TAG, "Device state: %s", state.c_str());
-        // 可以根据状态显示不同的LED效果
-        if (state == "listening") {
-            SetLedColor(0, 255, 255); // 青色
-        } else if (state == "speaking") {
-            SetLedColor(255, 255, 0); // 黄色
-        } else if (state == "error") {
-            SetLedColor(255, 0, 0); // 红色
-        } else {
-            // UpdateStatusDisplay(); // 删除
-        }
-    }
+    //     if (charging) {
+    //         ws2812_led_->SetAllPixels(255, 0, 255); // 紫色
+    //     } else {
+    //         // UpdateStatusDisplay(); // 删除
+    //     }
+    //     ws2812_led_->Show();
+    // }
 
     // 硬件事件回调接口
     virtual void OnNFCCardDetected(const std::string& uid) override {
         ESP_LOGI(TAG, "NFC card detected: %s", uid.c_str());
         current_nfc_uid_ = uid;
         nfc_card_present_ = true;
-        
-        if (ws2812_led_) {
-            ws2812_led_->SetAllPixels(0, 255, 0); // 绿色
-            ws2812_led_->Show();
-        }
         
         // 通知Application
         Application::GetInstance().OnNFCCardDetected(uid);
@@ -470,37 +367,6 @@ public:
         
         // 通知Application
         Application::GetInstance().OnNFCCardRemoved();
-    }
-
-    // 硬件控制接口
-    virtual void SetLedColor(int r, int g, int b) override {
-        if (ws2812_led_) {
-            ws2812_led_->SetAllPixels(r, g, b);
-            ws2812_led_->Show();
-        }
-    }
-
-    virtual void SetLedPattern(const std::string& pattern) override {
-        if (!ws2812_led_) return;
-        
-        if (pattern == "rainbow") {
-            ws2812_led_->Rainbow(0, WS2812_LED_COUNT, 50);
-        } else if (pattern == "breathing") {
-            ws2812_led_->Breathing(255, 255, 255, 50);
-        } else if (pattern == "off") {
-            ws2812_led_->Clear();
-            ws2812_led_->Show();
-        }
-    }
-
-    virtual void PlayNotificationSound(const std::string& sound_type) override {
-        // 这里可以播放不同类型的提示音
-        ESP_LOGI(TAG, "Playing notification sound: %s", sound_type.c_str());
-    }
-
-    virtual void Vibrate(int duration_ms) override {
-        // 这里可以实现震动反馈
-        ESP_LOGI(TAG, "Vibrating for %d ms", duration_ms);
     }
 
     // 硬件状态查询接口
@@ -554,75 +420,6 @@ public:
             ESP_LOGI(TAG, "Audio codec stopped");
         }
     }
-
-    // === 完整的硬件初始化函数 ===
-    void InitializeAllHardware() {
-        ESP_LOGI(TAG, "Starting hardware initialization...");
-        
-        // 1. 初始化I2C总线（音频编解码器）
-        InitializeI2c_CODEC();
-        
-        // 2. 检测ES8311设备是否存在
-        // if (i2c_bus_) {
-        //     if (!DetectES8311()) {
-        //         ESP_LOGI(TAG, "ES8311 not detected, audio functionality disabled");
-        //     } else {
-        //         ESP_LOGI(TAG, "ES8311 detected successfully");
-        //     }
-        // }
-        
-        // // 3. 初始化I2C总线（AXP2101）
-        // InitializeI2c_AXP2101();
-        
-        // // 4. 检测AXP2101设备是否存在
-        // if (axp2101_i2c_bus_) {
-        //     if (!DetectAXP2101()) {
-        //         ESP_LOGI(TAG, "AXP2101 not detected, power management disabled");
-        //     } else {
-        //         ESP_LOGI(TAG, "AXP2101 detected successfully");
-        //     }
-        // }
-        
-        // 5. 初始化按钮
-        InitializeButtons();
-        ESP_LOGI(TAG, "Buttons initialized");
-        
-        // 6. 初始化WS2812 LED
-        InitializeWS2812();
-        ESP_LOGI(TAG, "WS2812 LED initialized");
-        
-        // 7. 初始化RC522 NFC
-        InitializeRC522();
-        ESP_LOGI(TAG, "RC522 NFC initialized");
-        
-        // // 9. 初始化AXP2101电源管理
-        // InitializeAXP2101();
-        
-        // 10. 初始化物联网设备
-        // InitializeIot();
-        // ESP_LOGI(TAG, "IoT devices initialized");
-        
-        // // 11. 显示初始化完成状态
-        if (ws2812_led_) {
-            ws2812_led_->SetAllPixels(0, 255, 0); // 绿色表示初始化完成
-            ws2812_led_->Show();
-            vTaskDelay(pdMS_TO_TICKS(1000));
-            // UpdateStatusDisplay(); // 删除
-        }
-        
-        ESP_LOGI(TAG, "All hardware initialization completed");
-        ESP_LOGI(TAG, "Ready for RainMaker provisioning - press BOOT button to start");
-    }
-
-    // std::string GetBoardJson() override { return "{}"; }
-    // std::string GetBoardType() override { return "modo-board"; }
-    // Http* CreateHttp() override { return nullptr; }
-    // WebSocket* CreateWebSocket() override { return nullptr; }
-    // Mqtt* CreateMqtt() override { return nullptr; }
-    // Udp* CreateUdp() override { return nullptr; }
-    // void StartNetwork() override { /* 可留空 */ }
-    // const char* GetNetworkStateIcon() override { return nullptr; }
-    // void SetPowerSaveMode(bool) override { /* 可留空 */ }
 };
 
 // 静态成员变量初始化
