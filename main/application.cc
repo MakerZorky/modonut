@@ -384,6 +384,9 @@ void Application::Start() {
     });
     protocol_->OnAudioChannelClosed([this, &board]() {
         board.SetPowerSaveMode(true);
+        Schedule([this]() {
+            SetDeviceState(kDeviceStateIdle);
+        });
     });
     protocol_->OnIncomingJson([this](const cJSON* root) {
         // Parse JSON data

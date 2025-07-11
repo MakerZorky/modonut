@@ -13,7 +13,7 @@
 #include <esp_log.h>
 #include <driver/i2c_master.h>
 #include <driver/spi_master.h>
-#include "driver/dac_oneshot.h"
+#include <driver/gpio.h>
 #include <nvs_flash.h>
 
 #define TAG "ModoBoard"
@@ -85,6 +85,20 @@ private:
     //     ESP_LOGI("DAC", "Set DAC1(GPIO17) output to ~2.5V (raw=%d)", dac_value);
     // }
 
+    void InitializePower() {
+        // 配置 GPIO_NUM_15 为输出模式
+        gpio_config_t io_conf = {};
+        io_conf.intr_type = GPIO_INTR_DISABLE;      // 禁止中断
+        io_conf.mode = GPIO_MODE_OUTPUT;            // 设置为输出模式
+        io_conf.pin_bit_mask = (1ULL << GPIO_NUM_15); // 选择引脚
+        io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+        io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+        gpio_config(&io_conf);
+
+        // 拉高引脚（输出高电平）
+        gpio_set_level(GPIO_NUM_15, 1);
+    }
+
     void InitializeButtons() {
         // BOOT按钮：长按清空NVS，短按切换聊天状态或进入配网
         // boot_button_.OnClick([this]() {
@@ -145,7 +159,8 @@ private:
 
         volume_down_button_.OnLongPress([this]() {
             auto& app = Application::GetInstance();
-            app.ToggleChatState();
+            // app.ToggleChatState();
+            app.WakeWordInvoke("1");
         });
     }
 
@@ -281,10 +296,11 @@ public:
         
         InitializeI2c_CODEC();
         //InitializeDAC();
+        InitializePower();
         InitializeButtons();
         ESP_LOGI(TAG, "Buttons initialized");
-        InitializeRC522();
-        ESP_LOGI(TAG, "RC522 NFC initialized");
+        // InitializeRC522();
+        // ESP_LOGI(TAG, "RC522 NFC initialized");
         // InitializeI2c_AXP2101();
         // InitializeAXP2101();
         
