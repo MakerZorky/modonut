@@ -67,7 +67,6 @@ void WifiBoard::EnterWifiConfigMode() {
 
 void WifiBoard::StartNetwork() {
     auto& application = Application::GetInstance();
-    // auto builtin_led = Board::GetInstance().GetBuiltinLed();
 
 #if AP_CONNECT
     // User can press BOOT button while starting to enter WiFi configuration mode
@@ -133,30 +132,29 @@ void WifiBoard::StartNetwork() {
     bool wifi_provisioned = app_network_get_provisioned();
     if (!wifi_provisioned) {
         ESP_LOGI(TAG, "Starting provisioning");
-        application.PlaySound(Lang::Sounds::P3_ING_WIFICONFIG);
-        // builtin_led->SetBlue();
-        // builtin_led->Blink(1000, 500);
+        application.SetDeviceState(kDeviceStateWifiConfiguring);
+        application.Alert("配网", "进入配网模式...", "", Lang::Sounds::P3_ING_WIFICONFIG);
         /* Create a device and add the relevant parameters to it */
-        esp_rmaker_device_t *modomodo_device = esp_rmaker_device_create("modomodo_V1", NULL, NULL);
-        esp_rmaker_node_add_device(node, modomodo_device);
+        // esp_rmaker_device_t *modomodo_device = esp_rmaker_device_create("modomodo_V1", NULL, NULL);
+        // esp_rmaker_node_add_device(node, modomodo_device);
     } else {
         ESP_LOGI(TAG, "Already provisioned, starting Wi-Fi STA");
-        application.PlaySound(Lang::Sounds::P3_ING_WIFICONNECT);
+        application.Alert("联网", "开始联网...", "", Lang::Sounds::P3_ING_WIFICONNECT);
     }
 
     /* Start the ESP RainMaker Agent.必须写在这里，因为每次联网都需要这句话 */
-    esp_rmaker_start();
+    //esp_rmaker_start();
 
     esp_err_t err = app_network_start(POP_TYPE_NONE);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Could not start Wifi. Aborting!!!");
-        application.PlaySound(Lang::Sounds::P3_ERR_WIFICONNECT);
+        application.Alert("联网", "网络连接错误", "", Lang::Sounds::P3_ERR_WIFICONNECT);
         vTaskDelay(pdMS_TO_TICKS(5000));
         abort();
     }
 
     /* Enable OTA */
-    esp_rmaker_ota_enable_default();
+    // esp_rmaker_ota_enable_default();
     
 #endif
 }

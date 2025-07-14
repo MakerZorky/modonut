@@ -8,7 +8,6 @@
 #include "assets/lang_config.h"
 #include "boards/common/button.h"
 #include "boards/modo-board/config.h"
-#include "boards/common/rc522.h"
 #include "boards/common/axp2101.h"
 #include <nvs_flash.h>
 #include <esp_system.h>
@@ -110,9 +109,9 @@ void Application::CheckNewVersion() {
                 // wake_word_detect_.StopDetection();
                 // #endif
                 // 预先关闭音频输出，避免升级过程有音频操作
-                // 通过Board接口控制音频，而不是直接控制硬件
-                board.ShowDeviceState("upgrading");
-                
+                auto codec = board.GetAudioCodec();
+                codec->EnableInput(false);
+                codec->EnableOutput(false);
                 {
                     std::lock_guard<std::mutex> lock(mutex_);
                     audio_decode_queue_.clear();
@@ -461,7 +460,38 @@ void Application::Start() {
     // wake_word_detect_.StartDetection();
 #endif
 
-    PlaySound(Lang::Sounds::P3_SUC_WIFICONNECT);
+#if NfCWake
+    /* nfc task start */ 
+    auto nfc_t = board.GetNfc();
+    if(nfc_t->nfcInit()){
+        nfc_t->start();
+        nfc_t->OnReady([this](){
+            BaseType_t higher_priority_task_woken = pdFALSE;
+            return higher_priority_task_woken == pdTRUE;
+        });
+
+        nfc_t->OnNfcWakeDetected([this, nfc_t](const std::string& wake_word) {
+            Schedule([this, &wake_word, nfc_t]() {
+                WakeWordInvoke(wake_word);
+
+                // Resume detection
+                nfc_t->StartDetection(); 
+            }); 
+        });
+        
+        nfc_t->StartDetection();
+        
+        nfc_t->OnNfcDisCon([this](void){
+            if (device_state_ == kDeviceStateSpeaking) {
+                AbortSpeaking(kAbortReasonNone);
+            }
+            protocol_->CloseAudioChannel(); // 删除websockets
+            SetDeviceState(kDeviceStateIdle);   // 拿开后回到IDLE
+        });
+    }
+#endif // NfcWake
+
+    Alert("联网", "网络连接成功", "", Lang::Sounds::P3_SUC_WIFICONNECT);
     SetDeviceState(kDeviceStateIdle);
     esp_timer_start_periodic(clock_timer_handle_, 1000000);
 
@@ -733,28 +763,15 @@ void Application::SetDeviceState(DeviceState state) {
 
 void Application::ResetDecoder() {
     std::lock_guard<std::mutex> lock(mutex_);
-    
-    // 只有在音频编解码器可用时才重置解码器
-    if (opus_decoder_) {
-        opus_decoder_->ResetState();
-    }
-    
+    opus_decoder_->ResetState();
     audio_decode_queue_.clear();
     last_output_time_ = std::chrono::steady_clock::now();
     
-    // 通过Board接口控制音频输出，而不是直接控制硬件
-    // auto codec = Board::GetInstance().GetAudioCodec();
-    // codec->EnableOutput(true);
-    Board::GetInstance().ShowDeviceState("speaking");
+    auto codec = Board::GetInstance().GetAudioCodec();
+    codec->EnableOutput(true);
 }
 
 void Application::SetDecodeSampleRate(int sample_rate, int frame_duration) {
-    // 只有在音频编解码器可用时才设置解码采样率
-    if (!opus_decoder_) {
-        ESP_LOGW(TAG, "Audio decoder not available, skipping sample rate setting");
-        return;
-    }
-    
     if (opus_decoder_->sample_rate() == sample_rate && opus_decoder_->duration_ms() == frame_duration) {
         return;
     }
@@ -808,54 +825,3 @@ bool Application::CanEnterSleepMode() {
     return true;
 }
 
-// 这些全局变量应该移除，硬件访问应该通过Board接口
-
-void Application::ShowVolumeIndicator(int volume) {
-    // 通过Board接口实现音量指示
-    Board::GetInstance().ShowVolumeIndicator(volume);
-}
-
-void Application::ShowBatteryLevel(int level) {
-    // 通过Board接口实现电量指示
-    Board::GetInstance().ShowBatteryLevel(level);
-}
-
-void Application::OnChargingStateChanged(bool charging) {
-    // 通过Board接口实现充电状态指示
-    Board::GetInstance().OnChargingStateChanged(charging);
-}
-
-void Application::OnNFCCardDetected(const std::string& uid) {
-    ESP_LOGI(TAG, "NFC card detected: %s", uid.c_str());
-    if (GetDeviceState() == kDeviceStateIdle) {
-        ToggleChatState();
-    }
-}
-
-void Application::OnNFCCardRemoved() {
-    ESP_LOGI(TAG, "NFC card removed");
-    if (GetDeviceState() == kDeviceStateListening || GetDeviceState() == kDeviceStateSpeaking) {
-        StopListening();
-    }
-    // 主动断开 WiFi
-    WifiStation::GetInstance().Stop();
-    ESP_LOGI(TAG, "WiFi disconnected due to NFC removal");
-}
-
-// === 新增设备状态反馈方法实现 ===
-
-void Application::OnNetworkStatusChanged(bool connected) {
-    ESP_LOGI(TAG, "Network status changed: %s", connected ? "Connected" : "Disconnected");
-    // 移除对Board的调用，避免递归
-    // Board::GetInstance().ShowNetworkStatus(connected);
-}
-
-void Application::OnButtonEvent(const std::string& button_name, bool is_long_press) {
-    ESP_LOGI(TAG, "Button event: %s %s", button_name.c_str(), is_long_press ? "(long press)" : "(press)");
-    
-    if (is_long_press) {
-        Board::GetInstance().OnButtonLongPressed(button_name);
-    } else {
-        Board::GetInstance().OnButtonPressed(button_name);
-    }
-}

@@ -26,13 +26,15 @@
 #endif
 
 #include "boards/common/button.h"
-#include "boards/common/rc522.h"
 #include "boards/common/axp2101.h"
+#include "boards/common/nfc_tasks.h"
 #include "boards/common/i2c_device.h"
 
 #define SCHEDULE_EVENT (1 << 0)
 #define AUDIO_INPUT_READY_EVENT (1 << 1)
 #define AUDIO_OUTPUT_READY_EVENT (1 << 2)
+
+#define NfCWake 0
 
 enum DeviceState {
     kDeviceStateUnknown,
@@ -74,18 +76,6 @@ public:
     void WakeWordInvoke(const std::string& wake_word);
     void PlaySound(const std::string_view& sound);
     bool CanEnterSleepMode();
-
-    // === 硬件事件回调方法 ===
-    void ShowVolumeIndicator(int volume);
-    void ShowBatteryLevel(int level);
-    void OnChargingStateChanged(bool charging);
-    void OnNFCCardDetected(const std::string& uid);
-    void OnNFCCardRemoved();
-    
-    // === 设备状态反馈方法 ===
-    void OnDeviceStateChanged(DeviceState new_state);
-    void OnNetworkStatusChanged(bool connected);
-    void OnButtonEvent(const std::string& button_name, bool is_long_press);
 
 private:
     Application();

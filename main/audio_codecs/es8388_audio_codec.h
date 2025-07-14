@@ -5,6 +5,7 @@
 
 #include <driver/i2c_master.h>
 #include <esp_codec_dev.h>
+#include <driver/gpio.h>
 #include <esp_codec_dev_defaults.h>
 
 class Es8388AudioCodec : public AudioCodec {

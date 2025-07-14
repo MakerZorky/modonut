@@ -27,7 +27,7 @@ list(APPEND SOURCES ${BOARD_COMMON_SOURCES})
 list(APPEND INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/boards/common)
 
 # 添加新的硬件驱动文件
-list(APPEND SOURCES "boards/common/rc522.cc")
+list(APPEND SOURCES "boards/common/pn532.c")
 
 # 根据 BOARD_TYPE 配置添加对应的板级文件
 if(CONFIG_BOARD_TYPE_MODO_BOARD)
