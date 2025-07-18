@@ -35,6 +35,7 @@
 #define AUDIO_OUTPUT_READY_EVENT (1 << 2)
 
 #define NfCWake 0
+#define Axp2101 1
 
 enum DeviceState {
     kDeviceStateUnknown,

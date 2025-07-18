@@ -19,38 +19,18 @@
 
 #define TAG "ModoBoard"
 
-class Pmic : public Axp2101 {
-    public:
-        // Power Init
-        Pmic(i2c_master_bus_handle_t i2c_bus, uint8_t addr) : Axp2101(i2c_bus, addr) {
-            uint8_t data = ReadReg(0x90);
-            data |= 0b10110100;
-            WriteReg(0x90, data);
-            WriteReg(0x99, (0b11110 - 5));
-            WriteReg(0x97, (0b11110 - 2));
-            WriteReg(0x69, 0b00110101);
-            WriteReg(0x30, 0b111111);
-            WriteReg(0x90, 0xBF);
-            WriteReg(0x94, 33 - 5);
-            WriteReg(0x95, 33 - 5);
-        }
-    };
-
 class ModoBoard : public WifiBoard {
 private:
     // 硬件组件
     Button boot_button_;
     Button volume_up_button_;
     Button volume_down_button_;
-    Axp2101* axp2101_;
     Pmic* pmic_;
     PowerSaveTimer* power_save_timer_;
     
-    // I2C总线 - 分离音频编解码器和AXP2101的I2C总线
-    i2c_master_bus_handle_t i2c_bus_;           // 音频编解码器使用
-    i2c_master_bus_handle_t axp2101_i2c_bus_;   // AXP2101专用
+    i2c_master_bus_handle_t i2c_bus_;           
 
-    void InitializeI2c_CODEC() {
+    void InitializeI2c() {
         // 恢复I2C初始化，无条件执行
         i2c_master_bus_config_t i2c_bus_cfg = {
             .i2c_port = (i2c_port_t)1,
@@ -66,24 +46,6 @@ private:
         };
         ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_bus_cfg, &i2c_bus_));
         ESP_LOGI(TAG, "I2C bus initialized");
-    }
-
-    void InitializeI2c_AXP2101() {
-        // 恢复I2C初始化，无条件执行
-        i2c_master_bus_config_t i2c_bus_cfg = {
-            .i2c_port = AXP2101_I2C_PORT,
-            .sda_io_num = AXP2101_GPIO_SDA,
-            .scl_io_num = AXP2101_GPIO_SCL,
-            .clk_source = I2C_CLK_SRC_DEFAULT,
-            .glitch_ignore_cnt = 7,
-            .intr_priority = 0,
-            .trans_queue_depth = 0,
-            .flags = {
-                .enable_internal_pullup = 1,
-            },
-        };
-        ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_bus_cfg, &axp2101_i2c_bus_));
-        ESP_LOGI(TAG, "AXP2101 I2C bus initialized");
     }
 
     void InitializePowerSaveTimer() {
@@ -206,23 +168,16 @@ public:
                   volume_down_button_(VOLUME_DOWN_BUTTON_GPIO) {
         ESP_LOGI(TAG, "Initializing MODO board...");
         
-        InitializeI2c_CODEC();
+        InitializeI2c();
         InitializePowerAmplifier();
         InitializeButtons();
         // InitializeRC522();
-        InitializeAxp2101();
-        bool current_charging = pmic_->IsCharging();
-        int current_level = pmic_->GetBatteryLevel();
-        ESP_LOGI(TAG, "Battery LEVEL: %d%%", current_level);
-        ESP_LOGI(TAG, "Charging state changed: %s", current_charging ? "Charging" : "Not charging");
         
         ESP_LOGI(TAG, "MODO board initialization completed");
     }
 
     ~ModoBoard() {
-        if (axp2101_) delete axp2101_;
         if (i2c_bus_) i2c_del_master_bus(i2c_bus_);
-        if (axp2101_i2c_bus_) i2c_del_master_bus(axp2101_i2c_bus_);
     }
 
     virtual Led* GetLed() override {
@@ -257,17 +212,9 @@ public:
         return &nfc_task_;
     }
 
-    virtual bool GetBatteryLevel(int &level, bool& charging, bool& discharging) override {
-        static bool last_discharging = false;
-        charging = pmic_->IsCharging();
-        discharging = pmic_->IsDischarging();
-        if (discharging != last_discharging) {
-            power_save_timer_->SetEnabled(discharging);
-            last_discharging = discharging;
-        }
-
-        level = pmic_->GetBatteryLevel();
-        return true;
+    virtual Pmic* GetPmic() override {
+        static Pmic Pmic(i2c_bus_, 0x34);
+        return &Pmic;
     }
 };
 

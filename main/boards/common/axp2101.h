@@ -4,6 +4,11 @@
 #include "i2c_device.h"
 #include <functional>
 
+class Pmic : public Axp2101 {
+    public:
+        Pmic(i2c_master_bus_handle_t i2c_bus, uint8_t addr);
+};
+
 class Axp2101 : public I2cDevice {
 public:
     Axp2101(i2c_master_bus_handle_t i2c_bus, uint8_t addr);

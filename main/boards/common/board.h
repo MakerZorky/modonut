@@ -13,6 +13,7 @@
 void* create_board();
 class AudioCodec;
 class NfcTask;
+class Pmic;
 class Board {
 private:
     Board(const Board&) = delete; // 禁用拷贝构造函数
@@ -38,6 +39,7 @@ public:
     virtual Led* GetLed();
     virtual Led* GetCircularStrip();
     virtual NfcTask* GetNfc() = 0;
+    virtual Pmic* GetPmic() = 0;
     virtual AudioCodec* GetAudioCodec() = 0;
     virtual Http* CreateHttp() = 0;
     virtual WebSocket* CreateWebSocket() = 0;

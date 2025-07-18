@@ -491,6 +491,20 @@ void Application::Start() {
     }
 #endif // NfcWake
 
+#if Axp2101
+    auto pmic_t = board.GetPmic();
+    pmic_t->StartMonitoring();
+    pmic_t->SetChargingStateCallback([this](void){
+        bool current_charging = pmic_t->IsCharging();
+        ESP_LOGI(TAG, "Charging state changed: %s", current_charging ? "Charging" : "Not charging");
+    });
+    pmic_t->SetChargingStateCallback([this](void){
+        int current_level = pmic_t->GetBatteryLevel();
+        ESP_LOGI(TAG, "Battery LEVEL: %d%%", current_level);
+    });
+
+#endif // Axp2101
+
     Alert("联网", "网络连接成功", "", Lang::Sounds::P3_SUC_WIFICONNECT);
     SetDeviceState(kDeviceStateIdle);
     esp_timer_start_periodic(clock_timer_handle_, 1000000);
