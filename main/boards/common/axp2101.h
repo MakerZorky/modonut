@@ -4,11 +4,7 @@
 #include "i2c_device.h"
 #include <functional>
 
-class Pmic : public Axp2101 {
-    public:
-        Pmic(i2c_master_bus_handle_t i2c_bus, uint8_t addr);
-};
-
+// 先声明基类
 class Axp2101 : public I2cDevice {
 public:
     Axp2101(i2c_master_bus_handle_t i2c_bus, uint8_t addr);
@@ -51,6 +47,13 @@ private:
     bool monitoring_active_;
     bool last_charging_state_;
     int last_battery_level_;
+};
+
+// 后声明派生类
+class Pmic : public Axp2101 {
+public:
+    Pmic(i2c_master_bus_handle_t i2c_bus, uint8_t addr) 
+        : Axp2101(i2c_bus, addr) {}
 };
 
 #endif

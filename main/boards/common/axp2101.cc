@@ -7,26 +7,19 @@
 
 #define TAG "Axp2101"
 
-class Pmic : public Axp2101 {
-    public:
-        // Power Init
-        Pmic(i2c_master_bus_handle_t i2c_bus, uint8_t addr) : Axp2101(i2c_bus, addr) {
-            uint8_t data = ReadReg(0x90);
-            data |= 0b10110100;
-            WriteReg(0x90, data);
-            WriteReg(0x99, (0b11110 - 5));
-            WriteReg(0x97, (0b11110 - 2));
-            WriteReg(0x69, 0b00110101);
-            WriteReg(0x30, 0b111111);
-            WriteReg(0x90, 0xBF);
-            WriteReg(0x94, 33 - 5);
-            WriteReg(0x95, 33 - 5);
-        }
-};
-
 Axp2101::Axp2101(i2c_master_bus_handle_t i2c_bus, uint8_t addr) 
     : I2cDevice(i2c_bus, addr), monitoring_active_(false), 
       last_charging_state_(false), last_battery_level_(0) {
+    uint8_t data = ReadReg(0x90);
+    data |= 0b10110100;
+    WriteReg(0x90, data);
+    WriteReg(0x99, (0b11110 - 5));
+    WriteReg(0x97, (0b11110 - 2));
+    WriteReg(0x69, 0b00110101);
+    WriteReg(0x30, 0b111111);
+    WriteReg(0x90, 0xBF);
+    WriteReg(0x94, 33 - 5);
+    WriteReg(0x95, 33 - 5);
 }
 
 int Axp2101::GetBatteryCurrentDirection() {

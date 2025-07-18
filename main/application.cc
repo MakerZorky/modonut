@@ -494,12 +494,10 @@ void Application::Start() {
 #if Axp2101
     auto pmic_t = board.GetPmic();
     pmic_t->StartMonitoring();
-    pmic_t->SetChargingStateCallback([this](void){
-        bool current_charging = pmic_t->IsCharging();
+    pmic_t->SetChargingStateCallback([this, pmic_t](bool current_charging){
         ESP_LOGI(TAG, "Charging state changed: %s", current_charging ? "Charging" : "Not charging");
     });
-    pmic_t->SetChargingStateCallback([this](void){
-        int current_level = pmic_t->GetBatteryLevel();
+    pmic_t->SetLowBatteryCallback([this, pmic_t](int current_level){
         ESP_LOGI(TAG, "Battery LEVEL: %d%%", current_level);
     });
 

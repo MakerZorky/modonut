@@ -51,7 +51,7 @@ private:
     std::function<void(const std::string& wake_word)> nfc_wake_detected_callback_;
     std::function<void(bool speaking)> nfc_state_change_callback_;
     std::function<bool(void)> on_ready_ = nullptr;  // NFC识别回调函数
-    std::function<void(void)>nfc_disconn_callback_;
+    std::function<void(void)> nfc_disconn_callback_;
 };
 
 #endif
