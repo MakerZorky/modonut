@@ -124,10 +124,21 @@ void Axp2101::MonitoringTaskWrapper(void* param) {
 }
 
 void Axp2101::MonitoringTask() {
+    // 创建SingleLed实例，使用GPIO_NUM_6
+    SingleLed* BatteryLed = new SingleLed(GPIO_NUM_6);
+    
+    // 初始状态：绿灯亮2秒表示开机成功
+    BatteryLed->SetColor(0, 255, 0);
+    BatteryLed->TurnOn();
+    vTaskDelay(pdMS_TO_TICKS(2000));
+
     while (monitoring_active_) {
         bool current_charging = IsCharging();
         int current_level = GetBatteryLevel();
-        
+        bool is_charging_done = IsChargingDone();
+        // bool is_battery_connected = IsBatteryConnected();
+        // bool is_device_off = !is_battery_connected || (!IsCharging() && !IsDischarging());
+
         // 检查充电状态变化
         if (current_charging != last_charging_state_) {
             last_charging_state_ = current_charging;
@@ -137,15 +148,48 @@ void Axp2101::MonitoringTask() {
             ESP_LOGI(TAG, "Charging state changed: %s", current_charging ? "Charging" : "Not charging");
         }
         
-        // 检查低电量
-        if (current_level <= 20 && current_level != last_battery_level_) {
+        // 检查电量
+        if (current_level != last_battery_level_) {
             last_battery_level_ = current_level;
             if (low_battery_callback_) {
                 low_battery_callback_(current_level);
             }
-            ESP_LOGW(TAG, "Low battery: %d%%", current_level);
+            ESP_LOGW(TAG, "battery level: %d%%", current_level);
         }
         
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////日志打印/////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        
+        // if (is_device_off) { // 设备关机状态 - LED不亮
+        //     BatteryLed->TurnOff();
+        // } else 
+        if (current_charging) { // 充电状态
+            if (is_charging_done) { // 充满 绿常亮
+                BatteryLed->SetColor(0, 255, 0);
+                BatteryLed->TurnOn();
+                ESP_LOGI(TAG, "Charging is done.");
+            } else { // 未充满 红常亮
+                BatteryLed->SetColor(255, 0, 0);
+                BatteryLed->TurnOn();
+                ESP_LOGI(TAG, "Charging in progress.");
+            }
+        } else { // 不充电状态
+            if (current_level <= 20) { // 低电量 红闪烁间隔2s
+                BatteryLed->SetColor(255, 0, 0);
+                BatteryLed->StartContinuousBlink(2000);
+                ESP_LOGW(TAG, "Low battery: %d%%", current_level);
+            } else { // 正常工作状态 白常亮
+                BatteryLed->SetColor(255, 255, 255);
+                BatteryLed->TurnOn();
+                ESP_LOGI(TAG, "Normal operation, battery: %d%%", current_level);
+            }
+        }
+        
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
         vTaskDelay(pdMS_TO_TICKS(5000)); // 5秒检查一次
+
     }
+    delete BatteryLed; // 清理资源
 }

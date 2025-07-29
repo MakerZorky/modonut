@@ -3,6 +3,7 @@
 
 #include "i2c_device.h"
 #include <functional>
+#include "led/single_led.h"
 
 // 先声明基类
 class Axp2101 : public I2cDevice {

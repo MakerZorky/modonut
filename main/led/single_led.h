@@ -15,15 +15,6 @@ public:
 
     void OnStateChanged() override;
 
-private:
-    std::mutex mutex_;
-    TaskHandle_t blink_task_ = nullptr;
-    led_strip_handle_t led_strip_ = nullptr;
-    uint8_t r_ = 0, g_ = 0, b_ = 0;
-    int blink_counter_ = 0;
-    int blink_interval_ms_ = 0;
-    esp_timer_handle_t blink_timer_ = nullptr;
-
     void StartBlinkTask(int times, int interval_ms);
     void OnBlinkTimer();
 
@@ -33,6 +24,17 @@ private:
     void TurnOn();
     void TurnOff();
     void SetColor(uint8_t r, uint8_t g, uint8_t b);
+
+private:
+    std::mutex mutex_;
+    TaskHandle_t blink_task_ = nullptr;
+    led_strip_handle_t led_strip_ = nullptr;
+    uint8_t r_ = 0, g_ = 0, b_ = 0;
+    int blink_counter_ = 0;
+    int blink_interval_ms_ = 0;
+    esp_timer_handle_t blink_timer_ = nullptr;
+
+    
 };
 
 #endif // _SINGLE_LED_H_

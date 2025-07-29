@@ -181,7 +181,7 @@ public:
     }
 
     virtual Led* GetLed() override {
-        static SingleLed led(BUILTIN_LED_GPIO);
+        static SingleLed led(BATTERY_LED_GPIO);
         return &led;
     }
 
