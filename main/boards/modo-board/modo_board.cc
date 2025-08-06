@@ -8,7 +8,8 @@
 #include "led/circular_strip.h"
 #include "axp2101.h"
 #include "power_save_timer.h"
-#include "../common/nfc_tasks.h"
+#include "nfc_tasks.h"    
+#include "voice_interruption.h"
 #include "assets/lang_config.h"
 
 #include <esp_log.h>
@@ -210,6 +211,11 @@ public:
     virtual NfcTask* GetNfc() override {
         static NfcTask nfc_task_;
         return &nfc_task_;
+    }
+
+    virtual VoiceInterruption* GetVoiceInterruption() override {
+        static VoiceInterruption voice_interruption_(VOICE_UART_TXD, VOICE_UART_RXD);
+        return &voice_interruption_;
     }
 
     virtual Pmic* GetPmic() override {

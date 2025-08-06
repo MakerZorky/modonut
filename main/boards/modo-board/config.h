@@ -1,6 +1,6 @@
 #ifndef _MODO_BOARD_CONFIG_H_
 #define _MODO_BOARD_CONFIG_H_
-
+//modonut
 #include <driver/gpio.h>
 
 #define AUDIO_INPUT_SAMPLE_RATE  24000
@@ -38,6 +38,10 @@
 #define RC522_GPIO_SCLK         GPIO_NUM_36
 #define RC522_GPIO_CS           GPIO_NUM_37
 #define RC522_GPIO_RST          GPIO_NUM_33
+
+// 离线语音唤醒串口通讯
+#define VOICE_UART_TXD       GPIO_NUM_43
+#define VOICE_UART_RXD       GPIO_NUM_44
 
 // AXP2101电源管理配置
 #define AXP2101_I2C_PORT        I2C_NUM_0

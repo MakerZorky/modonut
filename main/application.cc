@@ -9,6 +9,7 @@
 #include "boards/common/button.h"
 #include "boards/modo-board/config.h"
 #include "boards/common/axp2101.h"
+#include "boards/common/voice_interruption.h"   
 #include <nvs_flash.h>
 #include <esp_system.h>
 
@@ -321,6 +322,17 @@ void Application::Start() {
     auto& board = Board::GetInstance();
     SetDeviceState(kDeviceStateStarting);
 
+#if Axp2101_ENABLED
+    auto pmic_t = board.GetPmic();
+    pmic_t->StartMonitoring();
+    pmic_t->SetChargingStateCallback([this, pmic_t](bool current_charging){
+        ESP_LOGI(TAG, "Charging state changed: %s", current_charging ? "Charging" : "Not charging");
+    });
+    pmic_t->SetLowBatteryCallback([this, pmic_t](int current_level){
+        ESP_LOGI(TAG, "Battery LEVEL: %d%%", current_level);
+    });
+#endif // Axp2101
+
     /* Setup the audio codec */
     auto codec = board.GetAudioCodec();
     opus_decoder_ = std::make_unique<OpusDecoderWrapper>(codec->output_sample_rate(), 1, OPUS_FRAME_DURATION_MS);
@@ -460,7 +472,7 @@ void Application::Start() {
     // wake_word_detect_.StartDetection();
 #endif
 
-#if NfCWake
+#if NfCWake_ENABLED
     /* nfc task start */ 
     auto nfc_t = board.GetNfc();
     if(nfc_t->nfcInit()){
@@ -491,17 +503,15 @@ void Application::Start() {
     }
 #endif // NfcWake
 
-#if Axp2101
-    auto pmic_t = board.GetPmic();
-    pmic_t->StartMonitoring();
-    pmic_t->SetChargingStateCallback([this, pmic_t](bool current_charging){
-        ESP_LOGI(TAG, "Charging state changed: %s", current_charging ? "Charging" : "Not charging");
-    });
-    pmic_t->SetLowBatteryCallback([this, pmic_t](int current_level){
-        ESP_LOGI(TAG, "Battery LEVEL: %d%%", current_level);
-    });
+#if VOICE_INTERRUPTION_ENABLED
+    auto voice_interruption = board.GetVoiceInterruption();
+    voice_interruption->start();
+    voice_interruption->StartDetection();
 
-#endif // Axp2101
+    voice_interruption->OnVoiceDetected([this]() {
+        ESP_LOGI(TAG, "Voice detected");
+    });
+#endif // VoiceInterruption
 
     Alert("联网", "网络连接成功", "", Lang::Sounds::P3_SUC_WIFICONNECT);
     SetDeviceState(kDeviceStateIdle);

@@ -1,6 +1,6 @@
 #ifndef _MODO_BOARD_CONFIG_H_
 #define _MODO_BOARD_CONFIG_H_
-
+//modo_board
 #include <driver/gpio.h>
 
 #define AUDIO_INPUT_SAMPLE_RATE  24000
