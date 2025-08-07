@@ -42,7 +42,7 @@ void VoiceInterruption::start() {
         &voice_task_handle_);
 }
 
-void VoiceInterruption::OnVoiceDetected(std::function<void(void)> callback) {
+void VoiceInterruption::OnVoiceDetected(std::function<void(uint8_t)> callback) {
     voice_detected_callback_ = std::move(callback);
 }
 
@@ -58,13 +58,6 @@ bool VoiceInterruption::IsDetectionRunning() {
     return (xEventGroupGetBits(event_group_) & DETECTION_RUNNING_EVENT);
 }
 
-uint8_t VoiceInterruption::reverse7(uint8_t v) {
-    v = ((v & 0x55) << 1) | ((v & 0xAA) >> 1);
-    v = ((v & 0x33) << 2) | ((v & 0xCC) >> 2);
-    v = ((v & 0x0F) << 4) | ((v & 0xF0) >> 4);
-    return v >> 1;          // 只要低 7 位
-}
-
 void VoiceInterruption::VoiceTaskLoop() {
     char data;
     while (true) {
@@ -74,8 +67,8 @@ void VoiceInterruption::VoiceTaskLoop() {
         uint8_t raw;
         if (uart_read_bytes(VOICE_UART_NUM, &raw, 1, 20 / portTICK_PERIOD_MS) == 1) {
             ESP_LOGI(TAG, "RX = 0x%02X (%u)", raw, raw);
-            if (raw == '0') {              // 收到 ASCII 字符 ‘0’
-                if (voice_detected_callback_) voice_detected_callback_();
+            if (voice_detected_callback_){
+                voice_detected_callback_(raw);
             }
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);

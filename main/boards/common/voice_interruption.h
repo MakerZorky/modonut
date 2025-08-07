@@ -24,8 +24,8 @@ public:
     /* Start FreeRTOS task */
     void start();
 
-    /* Register callback that will be invoked when character '0' is received */
-    void OnVoiceDetected(std::function<void(void)> callback);
+    /* Register callback: first parameter is UART byte, second is expected wake word string */
+    void OnVoiceDetected(std::function<void(uint8_t)> callback);
 
     /* Control polling activity */
     void StartDetection();
@@ -34,13 +34,12 @@ public:
 
 private:
     void VoiceTaskLoop();
-    uint8_t reverse7(uint8_t v);
 
 private:
     TaskHandle_t voice_task_handle_{nullptr};
     EventGroupHandle_t event_group_{nullptr};
 
-    std::function<void(void)> voice_detected_callback_;
+    std::function<void(uint8_t)> voice_detected_callback_;
 
     bool detected_{false};
 };

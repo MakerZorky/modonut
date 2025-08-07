@@ -28,7 +28,7 @@
 
 // WS2812 LED配置
 #define WS2812_GPIO             GPIO_NUM_7
-#define WS2812_LED_COUNT        1
+#define WS2812_LED_COUNT        7
 #define BATTERY_LED_GPIO        GPIO_NUM_6
 
 // RC522 NFC配置

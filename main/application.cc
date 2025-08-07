@@ -328,9 +328,6 @@ void Application::Start() {
     pmic_t->SetChargingStateCallback([this, pmic_t](bool current_charging){
         ESP_LOGI(TAG, "Charging state changed: %s", current_charging ? "Charging" : "Not charging");
     });
-    pmic_t->SetLowBatteryCallback([this, pmic_t](int current_level){
-        ESP_LOGI(TAG, "Battery LEVEL: %d%%", current_level);
-    });
 #endif // Axp2101
 
     /* Setup the audio codec */
@@ -472,6 +469,9 @@ void Application::Start() {
     // wake_word_detect_.StartDetection();
 #endif
 
+    // 共享的wake word变量
+    std::string shared_wake_word = "1"; // 默认值
+
 #if NfCWake_ENABLED
     /* nfc task start */ 
     auto nfc_t = board.GetNfc();
@@ -482,11 +482,10 @@ void Application::Start() {
             return higher_priority_task_woken == pdTRUE;
         });
 
-        nfc_t->OnNfcWakeDetected([this, nfc_t](const std::string& wake_word) {
+        nfc_t->OnNfcWakeDetected([this, nfc_t, &shared_wake_word](const std::string& wake_word) {
+            shared_wake_word = wake_word; // 更新共享的wake word
             Schedule([this, &wake_word, nfc_t]() {
                 WakeWordInvoke(wake_word);
-
-                // Resume detection
                 nfc_t->StartDetection(); 
             }); 
         });
@@ -508,8 +507,19 @@ void Application::Start() {
     voice_interruption->start();
     voice_interruption->StartDetection();
 
-    voice_interruption->OnVoiceDetected([this]() {
-        ESP_LOGI(TAG, "Voice detected");
+    voice_interruption->OnVoiceDetected([this, &shared_wake_word](uint8_t uart_data) {
+        ESP_LOGI(TAG, "Voice detected, UART data: 0x%02X (%u)", uart_data, uart_data);
+        
+        // 将UART数据转换为十进制字符串
+        std::string received_wake_word = std::to_string(uart_data);
+        
+        // 比较UART数据与共享的wake word
+        if ((received_wake_word == shared_wake_word)||(received_wake_word == "0")) {
+            ESP_LOGI(TAG, "Wake word matched: %s", received_wake_word.c_str());
+            WakeWordInvoke(received_wake_word);
+        } else {
+            ESP_LOGI(TAG, "UART data does not match wake word. Received: %s, Expected: %s", received_wake_word.c_str(), shared_wake_word.c_str());
+        }
     });
 #endif // VoiceInterruption
 
@@ -517,12 +527,10 @@ void Application::Start() {
     SetDeviceState(kDeviceStateIdle);
     esp_timer_start_periodic(clock_timer_handle_, 1000000);
 
-#if 1
     while (true) {
         //SystemInfo::PrintRealTimeStats(pdMS_TO_TICKS(1000));
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
-#endif
 }
 
 void Application::OnClockTimer() {
@@ -825,12 +833,12 @@ void Application::WakeWordInvoke(const std::string& wake_word) {
         Schedule([this]() {
             AbortSpeaking(kAbortReasonNone);
         });
-    } else if (device_state_ == kDeviceStateListening) {   
-        Schedule([this]() {
-            if (protocol_) {
-                protocol_->CloseAudioChannel();
-            }
-        });
+    // } else if (device_state_ == kDeviceStateListening) {   
+    //     Schedule([this]() {
+    //         if (protocol_) {
+    //             protocol_->CloseAudioChannel();
+    //         }
+    //     });
     }
 }
 
