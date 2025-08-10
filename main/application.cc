@@ -505,7 +505,6 @@ void Application::Start() {
 #if VOICE_INTERRUPTION_ENABLED
     auto voice_interruption = board.GetVoiceInterruption();
     voice_interruption->start();
-    voice_interruption->StartDetection();
 
     voice_interruption->OnVoiceDetected([this, &shared_wake_word](uint8_t uart_data) {
         ESP_LOGI(TAG, "Voice detected, UART data: 0x%02X (%u)", uart_data, uart_data);
@@ -766,6 +765,7 @@ void Application::SetDeviceState(DeviceState state) {
                 opus_encoder_->ResetState();
 #if CONFIG_USE_WAKE_WORD_DETECT
                 // wake_word_detect_.StopDetection();
+                voice_interruption->StopDetection();
 #endif
 #if CONFIG_USE_AUDIO_PROCESSOR
                 audio_processor_.Start();
@@ -781,6 +781,7 @@ void Application::SetDeviceState(DeviceState state) {
 #endif
 #if CONFIG_USE_WAKE_WORD_DETECT
                 // wake_word_detect_.StartDetection();
+                voice_interruption->StartDetection();
 #endif
             }
             ResetDecoder();
