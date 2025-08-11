@@ -110,7 +110,7 @@ void Axp2101::SetChargingStateCallback(std::function<void(bool)> callback) {
 void Axp2101::StartMonitoring() {
     if (!monitoring_active_) {
         monitoring_active_ = true;
-        xTaskCreate(MonitoringTaskWrapper, "axp2101_monitor", 4096, this, 5, nullptr);
+        xTaskCreate(MonitoringTaskWrapper, "axp2101_monitor", 4096, this, 1, nullptr);
     }
 }
 

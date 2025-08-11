@@ -8,7 +8,7 @@
 #include "led/circular_strip.h"
 #include "axp2101.h"
 #include "power_save_timer.h"
-#include "nfc_tasks.h"    
+#include "nfc_task.h"    
 #include "voice_interruption.h"
 #include "assets/lang_config.h"
 
@@ -63,17 +63,16 @@ private:
     }
 
     void InitializePowerAmplifier() {
-        // 配置 GPIO_NUM_15 为输出模式
         gpio_config_t io_conf = {};
         io_conf.intr_type = GPIO_INTR_DISABLE;      // 禁止中断
         io_conf.mode = GPIO_MODE_OUTPUT;            // 设置为输出模式
-        io_conf.pin_bit_mask = (1ULL << GPIO_NUM_15); // 选择引脚
+        io_conf.pin_bit_mask = (1ULL << AUDIO_CODEC_PA_PIN); // 选择引脚
         io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
         io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
         gpio_config(&io_conf);
 
         // 拉高引脚（输出高电平）
-        gpio_set_level(GPIO_NUM_15, 1);
+        gpio_set_level(AUDIO_CODEC_PA_PIN, 1);
     }
 
     void InitializeButtons() {
@@ -172,7 +171,6 @@ public:
         InitializeI2c();
         InitializePowerAmplifier();
         InitializeButtons();
-        // InitializeRC522();
         
         ESP_LOGI(TAG, "MODO board initialization completed");
     }

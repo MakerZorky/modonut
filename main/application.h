@@ -25,11 +25,6 @@
 #include "audio_processor.h"
 #endif
 
-#include "boards/common/button.h"
-#include "boards/common/axp2101.h"
-#include "boards/common/nfc_tasks.h"
-#include "boards/common/i2c_device.h"
-
 #define SCHEDULE_EVENT (1 << 0)
 #define AUDIO_INPUT_READY_EVENT (1 << 1)
 #define AUDIO_OUTPUT_READY_EVENT (1 << 2)

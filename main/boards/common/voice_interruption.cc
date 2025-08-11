@@ -30,16 +30,11 @@ VoiceInterruption::~VoiceInterruption() {
 }
 
 void VoiceInterruption::start() {
-    xTaskCreate(
-        [](void *arg) {
+    xTaskCreate([](void *arg) {
             auto *task = static_cast<VoiceInterruption *>(arg);
             task->VoiceTaskLoop();
         },
-        "voice_int_task",
-        4096,
-        this,
-        1,
-        &voice_task_handle_);
+        "voice_int_task", 4096, this, 2, &voice_task_handle_);
 }
 
 void VoiceInterruption::OnVoiceDetected(std::function<void(uint8_t)> callback) {

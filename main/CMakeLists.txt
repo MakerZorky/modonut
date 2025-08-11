@@ -15,19 +15,20 @@ set(SOURCES "audio_codecs/audio_codec.cc"
             "main.cc"
             )
 
-set(INCLUDE_DIRS "." "audio_codecs" "protocols" "audio_processing")
+set(INCLUDE_DIRS "." "audio_codecs" "protocols" "audio_processing" "nfc")
 
 # 添加 IOT 相关文件
 file(GLOB IOT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/iot/things/*.cc)
 list(APPEND SOURCES ${IOT_SOURCES})
 
+# 添加 NFC 相关文件
+file(GLOB NFC_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/nfc/*.cc)
+list(APPEND SOURCES ${NFC_SOURCES})
+
 # 添加板级公共文件
 file(GLOB BOARD_COMMON_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/boards/common/*.cc)
 list(APPEND SOURCES ${BOARD_COMMON_SOURCES})
 list(APPEND INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/boards/common)
-
-# 添加新的硬件驱动文件
-list(APPEND SOURCES "boards/common/pn532.c")
 
 # 根据 BOARD_TYPE 配置添加对应的板级文件
 if(CONFIG_BOARD_TYPE_MODO_BOARD)

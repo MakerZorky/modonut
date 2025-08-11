@@ -6,10 +6,7 @@
 #include "mqtt_protocol.h"
 #include "websocket_protocol.h"
 #include "assets/lang_config.h"
-#include "boards/common/button.h"
-#include "boards/modo-board/config.h"
-#include "boards/common/axp2101.h"
-#include "boards/common/voice_interruption.h"   
+#include "nfc/nfc_task.h"
 #include <nvs_flash.h>
 #include <esp_system.h>
 
@@ -21,6 +18,12 @@
 #include <esp_app_desc.h>
 #include <driver/i2c_master.h>
 #include <wifi_station.h>
+
+#include "boards/common/button.h"
+#include "boards/common/axp2101.h"
+#include "boards/common/i2c_device.h"
+#include "boards/common/voice_interruption.h"   
+#include "boards/modo-board/config.h"
 
 #define TAG "Application"
 
@@ -474,37 +477,35 @@ void Application::Start() {
 
 #if NfCWake_ENABLED
     /* nfc task start */ 
-    auto nfc_t = board.GetNfc();
+    //auto nfc_t = board.GetNfc();
+    static NfcTask task_instance;
+    NfcTask* nfc_t = &task_instance;
+    
     if(nfc_t->nfcInit()){
         nfc_t->start();
-        nfc_t->OnReady([this](){
-            BaseType_t higher_priority_task_woken = pdFALSE;
-            return higher_priority_task_woken == pdTRUE;
-        });
 
         nfc_t->OnNfcWakeDetected([this, nfc_t, &shared_wake_word](const std::string& wake_word) {
-            shared_wake_word = wake_word; // 更新共享的wake word
-            Schedule([this, &wake_word, nfc_t]() {
-                WakeWordInvoke(wake_word);
-                nfc_t->StartDetection(); 
-            }); 
+            // shared_wake_word = wake_word; // 更新共享的wake word
+            // Schedule([this, &wake_word, nfc_t]() {
+            //     WakeWordInvoke(wake_word);
+            //     nfc_t->StartDetection(); 
+            // }); 
         });
-        
-        nfc_t->StartDetection();
         
         nfc_t->OnNfcDisCon([this](void){
-            if (device_state_ == kDeviceStateSpeaking) {
-                AbortSpeaking(kAbortReasonNone);
-            }
-            protocol_->CloseAudioChannel(); // 删除websockets
-            SetDeviceState(kDeviceStateIdle);   // 拿开后回到IDLE
+            // if (device_state_ == kDeviceStateSpeaking) {
+            //     AbortSpeaking(kAbortReasonNone);
+            // }
+            // protocol_->CloseAudioChannel(); // 删除websockets
+            // SetDeviceState(kDeviceStateIdle);   // 拿开后回到IDLE
         });
+
+        nfc_t->StartDetection();
     }
 #endif // NfcWake
 
 #if VOICE_INTERRUPTION_ENABLED
     auto voice_interruption = board.GetVoiceInterruption();
-    voice_interruption->start();
 
     voice_interruption->OnVoiceDetected([this, &shared_wake_word](uint8_t uart_data) {
         ESP_LOGI(TAG, "Voice detected, UART data: 0x%02X (%u)", uart_data, uart_data);
@@ -519,6 +520,8 @@ void Application::Start() {
         } else {
             ESP_LOGI(TAG, "UART data does not match wake word. Received: %s, Expected: %s", received_wake_word.c_str(), shared_wake_word.c_str());
         }
+
+        //voice_interruption->start();
     });
 #endif // VoiceInterruption
 
@@ -765,7 +768,7 @@ void Application::SetDeviceState(DeviceState state) {
                 opus_encoder_->ResetState();
 #if CONFIG_USE_WAKE_WORD_DETECT
                 // wake_word_detect_.StopDetection();
-                voice_interruption->StopDetection();
+                // voice_interruption->StopDetection();
 #endif
 #if CONFIG_USE_AUDIO_PROCESSOR
                 audio_processor_.Start();
@@ -781,7 +784,7 @@ void Application::SetDeviceState(DeviceState state) {
 #endif
 #if CONFIG_USE_WAKE_WORD_DETECT
                 // wake_word_detect_.StartDetection();
-                voice_interruption->StartDetection();
+                // voice_interruption->StartDetection();
 #endif
             }
             ResetDecoder();
