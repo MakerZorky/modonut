@@ -536,9 +536,10 @@ void Application::Start() {
         } else {
             ESP_LOGI(TAG, "UART data does not match wake word. Received: %s, Expected: %s", received_wake_word.c_str(), shared_wake_word.c_str());
         }
-
-        //voice_interruption->start();
     });
+    voice_interruption->start();
+    voice_interruption->StartDetection();
+
 #endif // VoiceInterruption
 
     Alert("联网", "网络连接成功", "", Lang::Sounds::P3_SUC_WIFICONNECT);

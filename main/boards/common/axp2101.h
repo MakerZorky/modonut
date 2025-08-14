@@ -5,7 +5,7 @@
 #include <functional>
 #include "led/single_led.h"
 
-#define DEFAULT_BRIGHTNESS 32
+#define DEFAULT_BRIGHTNESS 8
 
 // 先声明基类
 class Axp2101 : public I2cDevice {
