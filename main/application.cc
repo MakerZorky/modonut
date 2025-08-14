@@ -768,7 +768,6 @@ void Application::SetDeviceState(DeviceState state) {
         case kDeviceStateConnecting:
             break;
         case kDeviceStateListening:
-
             // Make sure the audio processor is running
 #if CONFIG_USE_AUDIO_PROCESSOR
             if (!audio_processor_.IsRunning()) {
@@ -790,9 +789,9 @@ void Application::SetDeviceState(DeviceState state) {
                 audio_processor_.Start();
 #endif
             }
+            
             break;
         case kDeviceStateSpeaking:
-            // display->SetStatus(Lang::Strings::SPEAKING);
 
             if (listening_mode_ != kListeningModeRealtime) {
 #if CONFIG_USE_AUDIO_PROCESSOR
@@ -804,6 +803,8 @@ void Application::SetDeviceState(DeviceState state) {
 #endif
             }
             ResetDecoder();
+            Alert("提示", "start_speaking", "", Lang::Sounds::P3_REMINDER);
+            ESP_LOGI(TAG, "start_speaking_sound");
             break;
         default:
             // Do nothing

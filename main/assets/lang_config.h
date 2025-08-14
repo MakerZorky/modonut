@@ -202,6 +202,13 @@ namespace Lang {
         static_cast<size_t>(p3_min_vol_end - p3_min_vol_start)
         };
 
+        extern const char p3_reminder_start[] asm("_binary_reminder_p3_start");
+        extern const char p3_reminder_end[] asm("_binary_reminder_p3_end");
+        static const std::string_view P3_REMINDER {
+        static_cast<const char*>(p3_reminder_start),
+        static_cast<size_t>(p3_reminder_end - p3_reminder_start)
+        };
+
         extern const char p3_suc_ota_start[] asm("_binary_suc_ota_p3_start");
         extern const char p3_suc_ota_end[] asm("_binary_suc_ota_p3_end");
         static const std::string_view P3_SUC_OTA {
@@ -235,6 +242,34 @@ namespace Lang {
         static const std::string_view P3_VIBRATION {
         static_cast<const char*>(p3_vibration_start),
         static_cast<size_t>(p3_vibration_end - p3_vibration_start)
+        };
+
+        extern const char p3_vol_down_start[] asm("_binary_vol_down_p3_start");
+        extern const char p3_vol_down_end[] asm("_binary_vol_down_p3_end");
+        static const std::string_view P3_VOL_DOWN {
+        static_cast<const char*>(p3_vol_down_start),
+        static_cast<size_t>(p3_vol_down_end - p3_vol_down_start)
+        };
+
+        extern const char p3_vol_max_start[] asm("_binary_vol_max_p3_start");
+        extern const char p3_vol_max_end[] asm("_binary_vol_max_p3_end");
+        static const std::string_view P3_VOL_MAX {
+        static_cast<const char*>(p3_vol_max_start),
+        static_cast<size_t>(p3_vol_max_end - p3_vol_max_start)
+        };
+
+        extern const char p3_vol_min_start[] asm("_binary_vol_min_p3_start");
+        extern const char p3_vol_min_end[] asm("_binary_vol_min_p3_end");
+        static const std::string_view P3_VOL_MIN {
+        static_cast<const char*>(p3_vol_min_start),
+        static_cast<size_t>(p3_vol_min_end - p3_vol_min_start)
+        };
+
+        extern const char p3_vol_up_start[] asm("_binary_vol_up_p3_start");
+        extern const char p3_vol_up_end[] asm("_binary_vol_up_p3_end");
+        static const std::string_view P3_VOL_UP {
+        static_cast<const char*>(p3_vol_up_start),
+        static_cast<size_t>(p3_vol_up_end - p3_vol_up_start)
         };
 
         extern const char p3_welcome_start[] asm("_binary_welcome_p3_start");

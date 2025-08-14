@@ -470,17 +470,13 @@ unsigned char PCD_READ_CARD(unsigned char *rece_data,unsigned char *rece_len)
 
 	if(TypeA_Request(PICC_ATQA)==OK)
 	{
-	 printf("TypeA_Request OK\n");
-
 	 rets=MIFARE_005M_READ_APP(rece_data,rece_len);
 	 if(rets==OK)
 	 {
-		//printf("MIFARE_005M_READ_APP: %02X %02X %02X %02X",rece_data[0], rece_data[1], rece_data[2], rece_data[3]);
-		printf("READ_APP OK\n");
+		//printf("MIFARE_005M_READ_APP: %02X %02X %02X %02X",rece_data[0], rece_data[1], rece_data[2], rece_data[3])
 		return OK;	
 	 }
 	}
-	printf("PCD_READ_CARD failed\n");
 	vTaskDelay(pdMS_TO_TICKS(5));
 	return FM175XX_ERROR;
 }

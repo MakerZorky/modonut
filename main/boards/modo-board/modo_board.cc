@@ -110,8 +110,12 @@ private:
         volume_up_button_.OnClick([this]() {
             auto codec = GetAudioCodec();
             auto volume = codec->output_volume() + 10;
+            auto& app = Application::GetInstance();
             if (volume > 100) {
                 volume = 100;
+                app.Alert("提示", "音量已达最大值", "", Lang::Sounds::P3_VOL_MAX);
+            } else {
+                app.Alert("提示", "音量加", "", Lang::Sounds::P3_VOL_UP);
             }
             codec->SetOutputVolume(volume);
             ESP_LOGI(TAG, "Click detected, volue + 10");
@@ -126,8 +130,12 @@ private:
         volume_down_button_.OnClick([this]() {
             auto codec = GetAudioCodec();
             auto volume = codec->output_volume() - 10;
-            if (volume < 0) {
-                volume = 0;
+            auto& app = Application::GetInstance();
+            if (volume < 20) {
+                volume = 20;
+                app.Alert("提示", "音量已达最小值", "", Lang::Sounds::P3_VOL_MIN);
+            } else {  
+                app.Alert("提示", "音量减", "", Lang::Sounds::P3_VOL_DOWN);
             }
             codec->SetOutputVolume(volume);
             ESP_LOGI(TAG, "Click detected, volue - 10");
