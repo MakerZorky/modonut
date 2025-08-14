@@ -38,7 +38,8 @@ bool spiInit() {
 
     // 配置SPI设备
     spi_device_interface_config_t dev_config_;
-    dev_config_.command_bits = 8;   // 8位命令
+    // dev_config_.command_bits = 8;   // 8位命令
+    dev_config_.command_bits = 0; 
     dev_config_.address_bits = 0;
     dev_config_.dummy_bits = 0;
     dev_config_.clock_source = SPI_CLK_SRC_DEFAULT;
@@ -69,11 +70,12 @@ uint8_t SPIRead(uint8_t addr)
     if (!initialized_ || !spi_device_) return 0;
     //ESP-IDF 的 SPI 主机驱动规定：传给 spi_device_polling_transmit() 的 spi_transaction_t 结构体 地址必须是 4-byte 对齐
     spi_transaction_t t __attribute__((aligned(4))) = {}; 
-    t.cmd = (addr << 1) | 0x80;      // 读命令 (最高位=1)
-    t.length   = 8;      
-    t.rxlength = 8;      
-    t.flags  = SPI_TRANS_USE_TXDATA | SPI_TRANS_USE_RXDATA;       
-    t.tx_data[0] = 0x00; 
+    //t.cmd = (addr << 1) | 0x80;      // 读命令 (最高位=1)
+    t.length   = 16;      
+    t.rxlength = 16;      
+    t.flags  = SPI_TRANS_USE_TXDATA | SPI_TRANS_USE_RXDATA;     
+    t.tx_data[0] = (addr << 1) | 0x80;  
+    t.tx_data[1] = 0x00; 
     
     esp_err_t err = spi_device_polling_transmit(spi_device_, &t);
     if (err != ESP_OK) {
@@ -81,7 +83,7 @@ uint8_t SPIRead(uint8_t addr)
         return 0;
     }
     // ESP_LOGI(SPI_TAG, "Address: 0x%02X, Received: 0x%02X",addr, t.rx_data[0]);         
-    return t.rx_data[0];  
+    return t.rx_data[1];  
     /********************************************************************* */
 }
 
@@ -89,10 +91,12 @@ void SPIWrite(uint8_t addr, uint8_t data) {
     if (!initialized_ || !spi_device_) return;
     //ESP-IDF 的 SPI 主机驱动规定：传给 spi_device_polling_transmit() 的 spi_transaction_t 结构体 地址必须是 4-byte 对齐
     spi_transaction_t t __attribute__((aligned(4))) = {};
-    t.cmd = (addr << 1) & 0x7E;             
-    t.length = 8;               // 发送8位数据
+    //t.cmd = (addr << 1) & 0x7E;             
+    t.length = 16;               // 发送8位数据
     t.flags = SPI_TRANS_USE_TXDATA;
-    t.tx_data[0] = data;        // 要写入的数据
+    t.tx_data[0] = (addr << 1) & 0x7E; 
+    t.tx_data[1] = data;        // 要写入的数据
+    
     
     esp_err_t err = spi_device_polling_transmit(spi_device_, &t);
     if (err != ESP_OK) {
@@ -111,13 +115,10 @@ esp_err_t HardPowerdown(bool enable) {
 
 esp_err_t HardReset() {
     gpio_set_level(FM175XX_NPD, 0); // 拉低NPD引脚
-    vTaskDelay(pdMS_TO_TICKS(100));  // 保持5ms
+    vTaskDelay(pdMS_TO_TICKS(50));  // 保持5ms
     gpio_set_level(FM175XX_NPD, 1); // 释放NPD引脚
-    vTaskDelay(pdMS_TO_TICKS(200)); // 等待复位完成
+    vTaskDelay(pdMS_TO_TICKS(100)); // 等待复位完成
 
-    //软件复位
-    SPIWrite(0x01, 0x0F); // 发送软件复位命令
-    vTaskDelay(pdMS_TO_TICKS(50));
     return ESP_OK;
 }
 

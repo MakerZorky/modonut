@@ -477,27 +477,43 @@ void Application::Start() {
 
 #if NfCWake_ENABLED
     /* nfc task start */ 
-    //auto nfc_t = board.GetNfc();
-    static NfcTask task_instance;
-    NfcTask* nfc_t = &task_instance;
+    auto nfc_t = board.GetNfc();
     
     if(nfc_t->nfcInit()){
         nfc_t->start();
 
         nfc_t->OnNfcWakeDetected([this, nfc_t, &shared_wake_word](const std::string& wake_word) {
-            // shared_wake_word = wake_word; // 更新共享的wake word
-            // Schedule([this, &wake_word, nfc_t]() {
-            //     WakeWordInvoke(wake_word);
-            //     nfc_t->StartDetection(); 
-            // }); 
+            shared_wake_word = wake_word; // 更新共享的wake word
+            Schedule([this, &wake_word, nfc_t]() {
+                // if (device_state_ == kDeviceStateIdle) {
+                //     SetDeviceState(kDeviceStateConnecting);
+                    
+                //     // 发送hello
+                //     if (!protocol_->OpenAudioChannel()) {
+                //         ESP_LOGE(TAG, "Failed to open audio channel");
+                //         SetDeviceState(kDeviceStateIdle);
+                //         nfc_t -> StartDetection();
+                //         return;
+                //     }
+
+                //     // 发送状态wake_word_detected
+                //     protocol_->SendWakeWordDetected(wake_word);
+                //     SetDeviceState(kDeviceStateListening);
+                // // } else if (device_state_ == kDeviceStateSpeaking) {
+                // //     AbortSpeaking(kAbortReasonWakeWordDetected);
+                // }
+
+                WakeWordInvoke(wake_word);
+                nfc_t -> StartDetection(); 
+            }); 
         });
         
         nfc_t->OnNfcDisCon([this](void){
-            // if (device_state_ == kDeviceStateSpeaking) {
-            //     AbortSpeaking(kAbortReasonNone);
-            // }
-            // protocol_->CloseAudioChannel(); // 删除websockets
-            // SetDeviceState(kDeviceStateIdle);   // 拿开后回到IDLE
+            if (device_state_ == kDeviceStateSpeaking) {
+                AbortSpeaking(kAbortReasonNone);
+            }
+            protocol_->CloseAudioChannel(); // 删除websockets
+            SetDeviceState(kDeviceStateIdle);   // 拿开后回到IDLE
         });
 
         nfc_t->StartDetection();

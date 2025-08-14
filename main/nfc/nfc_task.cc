@@ -23,7 +23,7 @@ bool NfcTask::nfcInit() {
 void NfcTask::start() {
     xTaskCreate([](void* arg) {
         static_cast<NfcTask*>(arg)->NfcTaskLoop();
-    }, "nfc_task", stack_size_, this, 8, &nfc_task_handle_);
+    }, "nfc_task", stack_size_, this, 2, &nfc_task_handle_);
 }
 
 void NfcTask::StartDetection() {
@@ -71,11 +71,11 @@ void NfcTask::NfcTaskLoop() {
         ESP_LOGE(NFC_TAG, "Reset failed!");
     }
 
-    // unsigned char set_RF = Set_Rf(3);   //选择TX1，TX2输出
-    // ESP_LOGI(NFC_TAG, "Set_Rf: %d , 0=OK",set_RF);	
+    unsigned char set_RF = Set_Rf(3);   //选择TX1，TX2输出
+    ESP_LOGI(NFC_TAG, "Set_Rf: %d , 0=OK",set_RF);	
     
-    // unsigned char Pcd_ConfigISOType_value = Pcd_ConfigISOType(0);//选择TYPE A模式		
-    // ESP_LOGI(NFC_TAG, "Pcd_ConfigISOType_value: %d , 0=OK",Pcd_ConfigISOType_value);
+    unsigned char Pcd_ConfigISOType_value = Pcd_ConfigISOType(0);//选择TYPE A模式		
+    ESP_LOGI(NFC_TAG, "Pcd_ConfigISOType_value: %d , 0=OK",Pcd_ConfigISOType_value);
 
     unsigned char rece_buff[6] = {0};
     unsigned char write_buff[4] = {0};
@@ -87,23 +87,22 @@ void NfcTask::NfcTaskLoop() {
         // 等待检测事件
         xEventGroupWaitBits(event_group_, SPI_RUNNING_EVENT, pdFALSE, pdTRUE, portMAX_DELAY);
 
-        // PCD_WRITE_CARD(write_buff, 4, rece_buff, &rece_length);
-
-        // success = PCD_READ_CARD(rece_buff, &rece_length);
-        // if (success == OK) {
-        //     ESP_LOGI(NFC_TAG, "Card detected");
-        //     if(nfc_wake_detected_callback_){
-        //         //ESP_LOGI(NFC_TAG, "rece_buff %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X", rece_buff[0], rece_buff[1], rece_buff[2], rece_buff[3], rece_buff[4], rece_buff[5], rece_buff[6], rece_buff[7], rece_buff[8], rece_buff[9], rece_buff[10], rece_buff[11], rece_buff[12], rece_buff[13], rece_buff[14], rece_buff[15]);
-        //         std::string dataStr = std::to_string(rece_buff[9]);
-        //         nfc_wake_detected_callback_(dataStr);
-        //     }
-        //     detected_ = true;
-        // }else if((success != OK) && (detected_ == true)){
-        //     if(nfc_disconn_callback_){
-        //         nfc_disconn_callback_();
-        //     }
-        //     detected_ = false;
-        // }
+        success = PCD_READ_CARD(rece_buff, &rece_length);
+        // ESP_LOGI(NFC_TAG, "success = %d, detected_ = %d", success, detected_);
+        if ((success == OK)  && (detected_ == false)) {
+            detected_ = true;
+            ESP_LOGI(NFC_TAG, "Card detected");
+            // if(nfc_wake_detected_callback_){
+            //     //ESP_LOGI(NFC_TAG, "rece_buff %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X", rece_buff[0], rece_buff[1], rece_buff[2], rece_buff[3], rece_buff[4], rece_buff[5], rece_buff[6], rece_buff[7], rece_buff[8], rece_buff[9], rece_buff[10], rece_buff[11], rece_buff[12], rece_buff[13], rece_buff[14], rece_buff[15]);
+            //     std::string dataStr = std::to_string(rece_buff[9]);
+            //     nfc_wake_detected_callback_(dataStr);
+            // }
+        }else if((success != OK) && (detected_ == true)){
+            detected_ = false;
+            if(nfc_disconn_callback_){
+                nfc_disconn_callback_();
+            }
+        }
 
         vTaskDelay(pdMS_TO_TICKS(500)); 		
     }

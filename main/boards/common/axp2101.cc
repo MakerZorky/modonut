@@ -198,11 +198,11 @@ void Axp2101::MonitoringTask() {
             if (is_charging_done) { // 充满 绿常亮
                 BatteryLed->SetColor(0, DEFAULT_BRIGHTNESS, 0);
                 BatteryLed->TurnOn();
-                ESP_LOGI(TAG, "Charging is done.");
+                ESP_LOGD(TAG, "Charging is done.");
             } else { // 未充满 红常亮
                 BatteryLed->SetColor(DEFAULT_BRIGHTNESS, 0, 0);
                 BatteryLed->TurnOn();
-                ESP_LOGI(TAG, "Charging in progress.");
+                ESP_LOGD(TAG, "Charging in progress.");
             }
         } else { // 不充电状态
             if (current_level <= 20) { // 低电量 红闪烁间隔2s
@@ -212,7 +212,7 @@ void Axp2101::MonitoringTask() {
             } else { // 正常工作状态 白常亮
                 BatteryLed->SetColor(DEFAULT_BRIGHTNESS, DEFAULT_BRIGHTNESS, DEFAULT_BRIGHTNESS);
                 BatteryLed->TurnOn();
-                ESP_LOGI(TAG, "Normal operation, battery: %d%%", current_level);
+                ESP_LOGD(TAG, "Normal operation, battery: %d%%", current_level);
             }
         }
         
