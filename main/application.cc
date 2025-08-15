@@ -10,6 +10,8 @@
 #include <nvs_flash.h>
 #include <esp_system.h>
 
+#include "button.h"
+
 #include <cstring>
 #include <esp_log.h>
 #include <cJSON.h>
@@ -472,12 +474,55 @@ void Application::Start() {
     // wake_word_detect_.StartDetection();
 #endif
 
-    // 共享的wake word变量
-    std::string shared_wake_word = "1"; // 默认值
+#if Button_ENABLED
+    static Button volume_up_button_(VOLUME_UP_BUTTON_GPIO);
+    static Button volume_down_button_(VOLUME_DOWN_BUTTON_GPIO);
+
+    // 音量增加按钮 - 只在音频可用时启用
+    volume_up_button_.OnClick([this, codec]() {
+        auto volume = codec->output_volume() + 10;
+        if (volume > 100) {
+            volume = 100;
+            ResetDecoder();
+            Alert("提示", "音量已达最大值", "", Lang::Sounds::P3_VOL_MAX);
+        } else {
+            ResetDecoder();
+            Alert("提示", "音量加", "", Lang::Sounds::P3_VOL_UP);
+        }
+        codec->SetOutputVolume(volume);
+        ESP_LOGI(TAG, "Click detected, volue + 10");
+    });
+
+    volume_up_button_.OnLongPress([this, codec, &board]() {  
+        ESP_LOGI(TAG, "Long press detected, clearing NVS");
+        board.ClearNVS();
+    });
+
+    // 音量减少按钮 - 只在音频可用时启用
+    volume_down_button_.OnClick([this, codec]() {
+        auto volume = codec->output_volume() - 10;
+        if (volume < 20) {
+            volume = 20;
+            ResetDecoder();
+            Alert("提示", "音量已达最小值", "", Lang::Sounds::P3_VOL_MIN);
+        } else {  
+            ResetDecoder();
+            Alert("提示", "音量减", "", Lang::Sounds::P3_VOL_DOWN);
+        }
+        codec->SetOutputVolume(volume);
+        ESP_LOGI(TAG, "Click detected, volue - 10");
+    });
+
+    volume_down_button_.OnLongPress([this, codec]() {
+        WakeWordInvoke("1");
+    });
+#endif // Button
 
 #if NfCWake_ENABLED
     /* nfc task start */ 
     auto nfc_t = board.GetNfc();
+    // 共享的wake word变量
+    std::string shared_wake_word = "1"; // 默认值
     
     if(nfc_t->nfcInit()){
         nfc_t->start();

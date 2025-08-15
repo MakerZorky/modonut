@@ -29,6 +29,7 @@
 #define AUDIO_INPUT_READY_EVENT (1 << 1)
 #define AUDIO_OUTPUT_READY_EVENT (1 << 2)
 
+#define Button_ENABLED 1
 #define NfCWake_ENABLED 1
 #define Axp2101_ENABLED 1
 #define VOICE_INTERRUPTION_ENABLED 1

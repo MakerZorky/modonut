@@ -2,7 +2,6 @@
 #include "audio_codecs/box_audio_codec.h"
 #include "system_reset.h"
 #include "application.h"
-#include "button.h"
 #include "config.h"
 #include "led/single_led.h"
 #include "led/circular_strip.h"
@@ -23,9 +22,6 @@
 class ModoBoard : public WifiBoard {
 private:
     // 硬件组件
-    Button boot_button_;
-    Button volume_up_button_;
-    Button volume_down_button_;
     Pmic* pmic_;
     PowerSaveTimer* power_save_timer_;
     
@@ -75,110 +71,17 @@ private:
         gpio_set_level(AUDIO_CODEC_PA_PIN, 1);
     }
 
-    void InitializeButtons() {
-        // BOOT按钮：长按清空NVS，短按切换聊天状态或进入配网
-        // boot_button_.OnClick([this]() {
-        //     OnButtonPressed("boot");
-        //     auto& app = Application::GetInstance();
-            
-        //     // 检查是否已经在配网过程中
-        //     if (app.GetDeviceState() == kDeviceStateStarting && !is_connected_) {
-        //         // 检查是否已经在配网
-        //         static bool provisioning_started = false;
-        //         if (!provisioning_started) {
-        //             // 启动RainMaker BLE配网
-        //             ESP_LOGI(TAG, "Starting RainMaker BLE provisioning...");
-        //             provisioning_started = true;
-        //             StartNetwork();
-        //         } else {
-        //             ESP_LOGI(TAG, "Provisioning already started, ignoring button press");
-        //         }
-        //     } else {
-        //         app.ToggleChatState();
-        //     }
-        // });
-        
-        // boot_button_.OnLongPress([this]() {
-        //     // 通知Application长按事件
-        //     OnButtonLongPressed("boot");
-            
-        //     ESP_LOGI(TAG, "Long press detected, clearing NVS");
-        //     ClearNVS();
-        // });
-
-        // 音量增加按钮 - 只在音频可用时启用
-        volume_up_button_.OnClick([this]() {
-            auto codec = GetAudioCodec();
-            auto volume = codec->output_volume() + 10;
-            auto& app = Application::GetInstance();
-            if (volume > 100) {
-                volume = 100;
-                app.Alert("提示", "音量已达最大值", "", Lang::Sounds::P3_VOL_MAX);
-            } else {
-                app.Alert("提示", "音量加", "", Lang::Sounds::P3_VOL_UP);
-            }
-            codec->SetOutputVolume(volume);
-            ESP_LOGI(TAG, "Click detected, volue + 10");
-        });
-
-        volume_up_button_.OnLongPress([this]() {  
-            ESP_LOGI(TAG, "Long press detected, clearing NVS");
-            ClearNVS();
-        });
-
-        // 音量减少按钮 - 只在音频可用时启用
-        volume_down_button_.OnClick([this]() {
-            auto codec = GetAudioCodec();
-            auto volume = codec->output_volume() - 10;
-            auto& app = Application::GetInstance();
-            if (volume < 20) {
-                volume = 20;
-                app.Alert("提示", "音量已达最小值", "", Lang::Sounds::P3_VOL_MIN);
-            } else {  
-                app.Alert("提示", "音量减", "", Lang::Sounds::P3_VOL_DOWN);
-            }
-            codec->SetOutputVolume(volume);
-            ESP_LOGI(TAG, "Click detected, volue - 10");
-        });
-
-        volume_down_button_.OnLongPress([this]() {
-            auto& app = Application::GetInstance();
-            // app.ToggleChatState();
-            app.WakeWordInvoke("1");
-        });
-    }
-
-    void ClearNVS() {
-        ESP_LOGI(TAG, "Clearing NVS...");
-        
-        // 清除NVS
-        esp_err_t ret = nvs_flash_erase();
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to erase NVS: %s", esp_err_to_name(ret));
-            vTaskDelay(pdMS_TO_TICKS(2000));
-            return;
-        }
-        ESP_LOGI(TAG, "NVS cleared and reinitialized successfully");
-    
-        // 重启设备
-        ESP_LOGI(TAG, "Restarting device...");
-        esp_restart();
-    }
-
     void InitializeAxp2101() {
         ESP_LOGI(TAG, "Init AXP2101");
         pmic_ = new Pmic(i2c_bus_, 0x34);
     }
 
 public:
-    ModoBoard() : boot_button_(BOOT_BUTTON_GPIO), 
-                  volume_up_button_(VOLUME_UP_BUTTON_GPIO),
-                  volume_down_button_(VOLUME_DOWN_BUTTON_GPIO) {
+    ModoBoard() {
         ESP_LOGI(TAG, "Initializing MODO board...");
         
         InitializeI2c();
         InitializePowerAmplifier();
-        InitializeButtons();
         
         ESP_LOGI(TAG, "MODO board initialization completed");
     }
@@ -227,6 +130,23 @@ public:
     virtual Pmic* GetPmic() override {
         static Pmic Pmic(i2c_bus_, 0x34);
         return &Pmic;
+    }
+
+    virtual void ClearNVS() override {
+        ESP_LOGI(TAG, "Clearing NVS...");
+        
+        // 清除NVS
+        esp_err_t ret = nvs_flash_erase();
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to erase NVS: %s", esp_err_to_name(ret));
+            vTaskDelay(pdMS_TO_TICKS(2000));
+            return;
+        }
+        ESP_LOGI(TAG, "NVS cleared and reinitialized successfully");
+    
+        // 重启设备
+        ESP_LOGI(TAG, "Restarting device...");
+        esp_restart();
     }
 };
 
