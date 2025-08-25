@@ -13,38 +13,31 @@ Axp2101::Axp2101(i2c_master_bus_handle_t i2c_bus, uint8_t addr)
     // //M5stack配置
     // uint8_t data = ReadReg(0x90);
     // data |= 0b10110100;
-    // WriteReg(0x90, data);   //DCDC1/2/3、LDO2/3/4/5 全部开，LDO1 关。
+    // WriteReg(0x90, data);    //DCDC1/2/3、LDO2/3/4/5 全部开，LDO1 关。
     // WriteReg(0x99, (0b11110 - 5)); //LDO Voltage Setting
     // WriteReg(0x97, (0b11110 - 2));
-    WriteReg(0x69, 0b00110101); // CHGLED 配置，充电时常亮、充满或放电时熄灭
-    WriteReg(0x30, 0b111111); // ADC Channel Enable
-    // WriteReg(0x90, 0xBF); // LDO使能
-    // WriteReg(0x94, 33 - 5); // Fuel Gauge 参数（电池容量学习常数）
-    // WriteReg(0x95, 33 - 5); // Fuel Gauge 参数
+    WriteReg(0x30, 0b111111);   // ADC Channel Enable
+    WriteReg(0x69, 0b00110100); // CHGLED 配置，充电时常亮、充满或放电时熄灭, bit0为使能位
+    // WriteReg(0x90, 0xBF);    // LDO使能
+    // WriteReg(0x94, 33 - 5);  // Fuel Gauge 参数（电池容量学习常数）
+    // WriteReg(0x95, 33 - 5);  // Fuel Gauge 参数
 
 
-    // ** EFUSE defaults **
-    WriteReg(0x22, 0b110); // PWRON > OFFLEVEL as POWEROFF Source enable
-    WriteReg(0x27, 0x12);  // hold 4s to power off and 1s to power on
+    // ** settings **
+    WriteReg(0x12, 0b00000000); // PMU在关机时会断开BATFET，从而将电池与VSYS系统总线物理隔离，实现真正的关机（超低功耗，约40μA）。
+    WriteReg(0x15, 0b00000110); // 设置输入电压限制为4.36v
+    WriteReg(0x16, 0b00000101); // 设置输入电流限制为2000mA
 
-    // WriteReg(0x93, 0x1C); // 配置 aldo2 输出为 3.3V
-
-    // uint8_t value = ReadReg(0x90); // XPOWERS_AXP2101_LDO_ONOFF_CTRL0
-    // value = value | 0x02; // set bit 1 (ALDO2)
-    // WriteReg(0x90, value);  // and power channels now enabled
-
-    WriteReg(0x64, 0x03); // CV charger voltage setting to 4.2V
+    WriteReg(0x22, 0b00000110); // 过温保护，按键关机使能并关机
+    WriteReg(0x24, 0b00000110); // 将系统电压 (VSYS) 的关机阈值设置为 3.2V,太低会损害电池。 
+    WriteReg(0x27, 0b00010010); // 长按4秒关机，1秒开机
     
-    WriteReg(0x61, 0x05); // set Main battery precharge current to 125mA
-    WriteReg(0x62, 0x0F); // set Main battery charger current to ( 0x08-200mA, 0x09-300mA, 0x0A-400mA, 0x0B-500mA, 0X0F-900mA)
-    WriteReg(0x63, 0x15); // set Main battery term charge current to 125mA
+    WriteReg(0x61, 0b00000101); // 设置预充电电流125mA
+    WriteReg(0x62, 0b00001111); // 设置快充阶段的恒流充电电流900ma。( 0x08-200mA, 0x09-300mA, 0x0A-400mA, 0x0B-500mA, 0X0F-900mA)
+    WriteReg(0x63, 0b00001101); // 设置充电终止电流125mA
+    WriteReg(0x64, 0b00000011); // 设置锂电池的恒压充电终止电压为4.2v
 
-    WriteReg(0x14, 0x00); // set minimum system voltage to 4.1V (default 4.7V), for poor USB cables
-    WriteReg(0x15, 0x00); // set input voltage limit to 3.88v, for poor USB cables
-    WriteReg(0x16, 0x05); // set input current limit to 2000mA
-
-    WriteReg(0x24, 0x01); // set Vsys for PWROFF threshold to 3.2V (default - 2.6V and kill battery)
-    WriteReg(0x50, 0x14); // set TS pin to EXTERNAL input (not temperature)
+    WriteReg(0x50, 0b00010100); // set TS pin to EXTERNAL input (not temperature)
 }
 
 int Axp2101::GetBatteryCurrentDirection() {

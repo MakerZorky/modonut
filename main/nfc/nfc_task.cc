@@ -78,14 +78,16 @@ void NfcTask::NfcTaskLoop() {
     ESP_LOGI(NFC_TAG, "Pcd_ConfigISOType_value: %d , 0=OK",Pcd_ConfigISOType_value);
 
     unsigned char rece_buff[6] = {0};
-    unsigned char write_buff[4] = {0};
-    write_buff[3] = 0x02;
     unsigned char rece_length = 4;
     uint8_t success;
     while(1)
     {		
         // 等待检测事件
         xEventGroupWaitBits(event_group_, SPI_RUNNING_EVENT, pdFALSE, pdTRUE, portMAX_DELAY);
+
+        // unsigned char write_buff[4] = {0};
+        // write_buff[3] = 99;
+        // success = PCD_WRITE_CARD(write_buff, 4, rece_buff, &rece_length);
 
         success = PCD_READ_CARD(rece_buff, &rece_length);
         // ESP_LOGI(NFC_TAG, "success = %d, detected_ = %d", success, detected_);
@@ -94,7 +96,7 @@ void NfcTask::NfcTaskLoop() {
             ESP_LOGI(NFC_TAG, "Card detected");
             if(nfc_wake_detected_callback_){
                 //ESP_LOGI(NFC_TAG, "rece_buff %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X", rece_buff[0], rece_buff[1], rece_buff[2], rece_buff[3], rece_buff[4], rece_buff[5], rece_buff[6], rece_buff[7], rece_buff[8], rece_buff[9], rece_buff[10], rece_buff[11], rece_buff[12], rece_buff[13], rece_buff[14], rece_buff[15]);
-                std::string dataStr = std::to_string(rece_buff[9]);
+                std::string dataStr = std::to_string(rece_buff[3]);
                 nfc_wake_detected_callback_(dataStr);
             }
         }else if((success != OK) && (detected_ == true)){

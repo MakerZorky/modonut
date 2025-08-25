@@ -28,6 +28,8 @@ public:
     void Blink(StripColor color, int interval_ms);
     void Breathe(StripColor low, StripColor high, int interval_ms);
     void Scroll(StripColor low, StripColor high, int length, int interval_ms);
+    void SetBlue() { SetAllColor(Blue); };
+    void SetPink() { SetAllColor(Pink); };
 
 private:
     std::mutex mutex_;
@@ -39,6 +41,9 @@ private:
     int blink_interval_ms_ = 0;
     esp_timer_handle_t strip_timer_ = nullptr;
     std::function<void()> strip_callback_ = nullptr;
+
+    StripColor Blue = { 130, 228, 225 };
+    StripColor Pink = { 255, 144, 176 };
 
     uint8_t default_brightness_ = DEFAULT_BRIGHTNESS;
     uint8_t low_brightness_ = LOW_BRIGHTNESS;

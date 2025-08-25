@@ -357,6 +357,50 @@ void Application::Start() {
     
     codec->Start(); 
 
+#if Button_ENABLED
+    static Button volume_up_button_(VOLUME_UP_BUTTON_GPIO);
+    static Button volume_down_button_(VOLUME_DOWN_BUTTON_GPIO);
+
+    // 音量增加按钮 - 只在音频可用时启用
+    volume_up_button_.OnClick([this, codec]() {
+        auto volume = codec->output_volume() + 5;
+        if (volume > 100) {
+            volume = 100;
+            ResetDecoder();
+            Alert("提示", "音量已达最大值", "", Lang::Sounds::P3_VOL_MAX);
+        } else {
+            ResetDecoder();
+            Alert("提示", "音量加", "", Lang::Sounds::P3_VOL_UP);
+        }
+        codec->SetOutputVolume(volume);
+        ESP_LOGI(TAG, "Click detected, volue + 5");
+    });
+
+    volume_up_button_.OnLongPress([this, codec, &board]() {  
+        ESP_LOGI(TAG, "Long press detected, clearing NVS");
+        board.ClearNVS();
+    });
+
+    // 音量减少按钮 - 只在音频可用时启用
+    volume_down_button_.OnClick([this, codec]() {
+        auto volume = codec->output_volume() - 5;
+        if (volume < 50) {
+            volume = 50;
+            ResetDecoder();
+            Alert("提示", "音量已达最小值", "", Lang::Sounds::P3_VOL_MIN);
+        } else {  
+            ResetDecoder();
+            Alert("提示", "音量减", "", Lang::Sounds::P3_VOL_DOWN);
+        }
+        codec->SetOutputVolume(volume);
+        ESP_LOGI(TAG, "Click detected, volue - 5");
+    });
+
+    volume_down_button_.OnLongPress([this, codec]() {
+        WakeWordInvoke("1");
+    });
+#endif // Button
+
     xTaskCreatePinnedToCore([](void* arg) {
         Application* app = (Application*)arg;
         app->AudioLoop();
@@ -473,50 +517,6 @@ void Application::Start() {
     // wake_word_detect_.OnWakeWordDetected([this](const std::string& wake_word) { ... });
     // wake_word_detect_.StartDetection();
 #endif
-
-#if Button_ENABLED
-    static Button volume_up_button_(VOLUME_UP_BUTTON_GPIO);
-    static Button volume_down_button_(VOLUME_DOWN_BUTTON_GPIO);
-
-    // 音量增加按钮 - 只在音频可用时启用
-    volume_up_button_.OnClick([this, codec]() {
-        auto volume = codec->output_volume() + 10;
-        if (volume > 100) {
-            volume = 100;
-            ResetDecoder();
-            Alert("提示", "音量已达最大值", "", Lang::Sounds::P3_VOL_MAX);
-        } else {
-            ResetDecoder();
-            Alert("提示", "音量加", "", Lang::Sounds::P3_VOL_UP);
-        }
-        codec->SetOutputVolume(volume);
-        ESP_LOGI(TAG, "Click detected, volue + 10");
-    });
-
-    volume_up_button_.OnLongPress([this, codec, &board]() {  
-        ESP_LOGI(TAG, "Long press detected, clearing NVS");
-        board.ClearNVS();
-    });
-
-    // 音量减少按钮 - 只在音频可用时启用
-    volume_down_button_.OnClick([this, codec]() {
-        auto volume = codec->output_volume() - 10;
-        if (volume < 20) {
-            volume = 20;
-            ResetDecoder();
-            Alert("提示", "音量已达最小值", "", Lang::Sounds::P3_VOL_MIN);
-        } else {  
-            ResetDecoder();
-            Alert("提示", "音量减", "", Lang::Sounds::P3_VOL_DOWN);
-        }
-        codec->SetOutputVolume(volume);
-        ESP_LOGI(TAG, "Click detected, volue - 10");
-    });
-
-    volume_down_button_.OnLongPress([this, codec]() {
-        WakeWordInvoke("1");
-    });
-#endif // Button
 
 #if NfCWake_ENABLED
     /* nfc task start */ 
